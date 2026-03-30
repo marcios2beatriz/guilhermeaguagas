@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-const FORM_VAZIO = { cliente_id: '', produto_id: '', quantidade: 1, valor_unit: '', fiado: false }
+const FORM_VAZIO = { cliente_id: '', produto_id: '', quantidade: 1, valor_unit: '', fiado: false, tem_desconto: false, desconto_tipo: 'percentual', desconto_valor: '' }
+
+function calcularTotal(form) {
+  const subtotal = parseFloat(form.valor_unit || 0) * parseInt(form.quantidade || 1)
+  if (!form.tem_desconto || !form.desconto_valor) return subtotal
+  if (form.desconto_tipo === 'percentual') {
+    return subtotal - (subtotal * parseFloat(form.desconto_valor) / 100)
+  }
+  return Math.max(0, subtotal - parseFloat(form.desconto_valor))
+}
 
 export default function Vendas() {
   const [vendas, setVendas] = useState([])
@@ -30,13 +39,16 @@ export default function Vendas() {
   }
 
   function iniciarEdicao(v) {
-    setEditando(v) // guarda venda original para reverter fiado se necessário
+    setEditando(v)
     setForm({
       cliente_id: v.cliente_id || '',
       produto_id: v.produto_id || '',
       quantidade: v.quantidade,
       valor_unit: v.valor_unit.toString(),
       fiado: v.fiado,
+      tem_desconto: !!v.desconto_valor,
+      desconto_tipo: v.desconto_tipo || 'percentual',
+      desconto_valor: v.desconto_valor ? v.desconto_valor.toString() : '',
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -49,13 +61,14 @@ export default function Vendas() {
   async function salvar(e) {
     e.preventDefault()
     setLoading(true)
-    const total = parseFloat(form.valor_unit) * parseInt(form.quantidade)
+    const total = calcularTotal(form)
+    const desconto_valor = form.tem_desconto && form.desconto_valor ? parseFloat(form.desconto_valor) : 0
+    const desconto_tipo = form.tem_desconto ? form.desconto_tipo : null
 
     if (editando) {
       const totalAntigo = editando.total
       const qtdAntiga = editando.quantidade
 
-      // Atualiza a venda
       const { error } = await supabase.from('vendas').update({
         cliente_id: form.cliente_id || null,
         produto_id: form.produto_id || null,
@@ -63,6 +76,8 @@ export default function Vendas() {
         valor_unit: parseFloat(form.valor_unit),
         total,
         fiado: form.fiado,
+        desconto_tipo,
+        desconto_valor,
       }).eq('id', editando.id)
 
       if (error) { alert('Erro: ' + error.message); setLoading(false); return }
@@ -92,6 +107,8 @@ export default function Vendas() {
         valor_unit: parseFloat(form.valor_unit),
         total,
         fiado: form.fiado,
+        desconto_tipo,
+        desconto_valor,
       }])
       if (error) { alert('Erro: ' + error.message); setLoading(false); return }
 
@@ -187,8 +204,46 @@ export default function Vendas() {
             onChange={e => setForm({ ...form, valor_unit: e.target.value })} className="input" />
 
           {form.valor_unit && form.quantidade && (
-            <div className="sm:col-span-2 text-sm text-blue-700 font-semibold bg-blue-50 rounded-xl px-4 py-2">
-              Total: R$ {(parseFloat(form.valor_unit) * parseInt(form.quantidade || 1)).toFixed(2)}
+            <div className="sm:col-span-2 space-y-2">
+              {/* Toggle desconto */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.tem_desconto}
+                  onChange={e => setForm({ ...form, tem_desconto: e.target.checked, desconto_valor: '' })}
+                  className="w-4 h-4 accent-blue-600" />
+                <span className="text-sm text-gray-600">Aplicar desconto</span>
+              </label>
+
+              {/* Campos de desconto */}
+              {form.tem_desconto && (
+                <div className="flex gap-2">
+                  <div className="flex bg-gray-100 rounded-xl p-1">
+                    <button type="button" onClick={() => setForm({ ...form, desconto_tipo: 'percentual' })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${form.desconto_tipo === 'percentual' ? 'bg-white text-blue-700 shadow' : 'text-gray-400'}`}>
+                      %
+                    </button>
+                    <button type="button" onClick={() => setForm({ ...form, desconto_tipo: 'nominal' })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${form.desconto_tipo === 'nominal' ? 'bg-white text-blue-700 shadow' : 'text-gray-400'}`}>
+                      R$
+                    </button>
+                  </div>
+                  <input type="number" step="0.01" min="0" placeholder={form.desconto_tipo === 'percentual' ? 'Ex: 10 (%)' : 'Ex: 5,00 (R$)'}
+                    value={form.desconto_valor}
+                    onChange={e => setForm({ ...form, desconto_valor: e.target.value })}
+                    className="input flex-1" />
+                </div>
+              )}
+
+              {/* Preview do total */}
+              <div className={`rounded-xl px-4 py-2 text-sm font-semibold ${form.tem_desconto && form.desconto_valor ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>
+                {form.tem_desconto && form.desconto_valor ? (
+                  <span>
+                    Subtotal: R$ {(parseFloat(form.valor_unit) * parseInt(form.quantidade || 1)).toFixed(2)}
+                    {' → '}Total com desconto: <strong>R$ {calcularTotal(form).toFixed(2)}</strong>
+                  </span>
+                ) : (
+                  <span>Total: R$ {calcularTotal(form).toFixed(2)}</span>
+                )}
+              </div>
             </div>
           )}
 
@@ -221,6 +276,7 @@ export default function Vendas() {
               <th className="p-4 text-left">Produto</th>
               <th className="p-4 text-left">Qtd</th>
               <th className="p-4 text-left">Total</th>
+              <th className="p-4 text-left">Desconto</th>
               <th className="p-4 text-left">Pgto</th>
               <th className="p-4 text-left">Ações</th>
             </tr>
@@ -233,6 +289,13 @@ export default function Vendas() {
                 <td className="p-4 whitespace-nowrap">{v.produtos?.nome || '—'}</td>
                 <td className="p-4 text-gray-500">{v.quantidade}</td>
                 <td className="p-4 font-semibold text-emerald-600 whitespace-nowrap">R$ {v.total?.toFixed(2)}</td>
+                <td className="p-4 whitespace-nowrap">
+                  {v.desconto_valor > 0
+                    ? <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700 font-semibold">
+                        {v.desconto_tipo === 'percentual' ? `${v.desconto_valor}%` : `R$ ${v.desconto_valor.toFixed(2)}`}
+                      </span>
+                    : <span className="text-gray-300 text-xs">—</span>}
+                </td>
                 <td className="p-4">
                   {v.fiado
                     ? <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-600 font-semibold whitespace-nowrap">Fiado</span>
