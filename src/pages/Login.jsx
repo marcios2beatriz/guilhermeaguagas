@@ -27,7 +27,7 @@ export default function Login() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-600 rounded-full opacity-20" />
 
         <div className="relative z-10 flex items-center gap-3">
-          <span className="text-5xl">💧</span>
+          <img src="/galao.png" alt="Galão" className="w-12 h-12 object-contain bg-white rounded-full p-1" />
           <div>
             <p className="text-white text-2xl font-bold leading-tight">Guilherme</p>
             <p className="text-blue-200 text-lg font-semibold">Água e Gás</p>
@@ -63,7 +63,7 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <span className="text-5xl">💧</span>
+            <img src="/galao.png" alt="Galão" className="w-16 h-16 object-contain bg-white rounded-full mx-auto p-1" />
             <h1 className="text-2xl font-bold text-blue-800 mt-2">Guilherme Água e Gás</h1>
           </div>
 

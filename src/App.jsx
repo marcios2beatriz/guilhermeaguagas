@@ -47,7 +47,7 @@ export default function App() {
       <div className="flex min-h-screen bg-blue-50">
         <aside className={`hidden md:flex flex-col bg-blue-800 transition-all duration-300 shadow-xl ${collapsed ? 'w-16' : 'w-60'}`}>
           <div className="flex items-center gap-2 px-3 py-4 border-b border-blue-700">
-            <span className="text-3xl">💧</span>
+            <img src="/galao.png" alt="Galão" className="w-8 h-8 object-contain bg-white rounded-full" />
             {!collapsed && (
               <div>
                 <p className="font-bold text-sm leading-tight text-white">Guilherme</p>
@@ -76,7 +76,7 @@ export default function App() {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="bg-white border-b border-blue-100 px-4 py-3 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2">
-              <span className="text-2xl">💧</span>
+              <img src="/galao.png" alt="Galão" className="w-8 h-8 object-contain bg-white rounded-full" />
               <h1 className="text-base font-bold text-blue-800">
                 Guilherme <span className="text-blue-500">Água e Gás</span>
               </h1>
