@@ -9,11 +9,13 @@ import Produtos from './pages/Produtos'
 import Dashboard from './pages/Dashboard'
 import CRM from './pages/CRM'
 import Login from './pages/Login'
+import Historico from './pages/Historico'
 
 const menu = [
   { to: '/', label: 'Dashboard', icon: '📊', end: true },
   { to: '/clientes', label: 'Clientes', icon: '👥' },
   { to: '/crm', label: 'CRM', icon: '📈' },
+  { to: '/historico', label: 'Histórico', icon: '📜' },
   { to: '/produtos', label: 'Mercadorias', icon: '📦' },
   { to: '/vendas', label: 'Vendas', icon: '🛒' },
   { to: '/fiado', label: 'Fiado', icon: '📋' },
@@ -88,6 +90,7 @@ export default function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/crm" element={<CRM />} />
+              <Route path="/historico" element={<Historico />} />
               <Route path="/produtos" element={<Produtos />} />
               <Route path="/vendas" element={<Vendas />} />
               <Route path="/fiado" element={<Fiado />} />
