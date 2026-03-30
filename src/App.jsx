@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
 import Clientes from './pages/Clientes'
 import Vendas from './pages/Vendas'
 import Fiado from './pages/Fiado'
@@ -7,6 +8,7 @@ import FluxoCaixa from './pages/FluxoCaixa'
 import Produtos from './pages/Produtos'
 import Dashboard from './pages/Dashboard'
 import CRM from './pages/CRM'
+import Login from './pages/Login'
 
 const menu = [
   { to: '/', label: 'Dashboard', icon: '📊', end: true },
@@ -20,12 +22,25 @@ const menu = [
 
 export default function App() {
   const [collapsed, setCollapsed] = useState(false)
+  const [sessao, setSessao] = useState(undefined)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSessao(data.session))
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => setSessao(s))
+    return () => listener.subscription.unsubscribe()
+  }, [])
+
+  if (sessao === undefined) return (
+    <div className="min-h-screen bg-blue-50 flex items-center justify-center text-blue-400 text-sm">Carregando...</div>
+  )
+
+  if (!sessao) return <Login />
+
+  async function sair() { await supabase.auth.signOut() }
 
   return (
     <BrowserRouter>
       <div className="flex min-h-screen bg-blue-50">
-
-        {/* Sidebar — visível só em desktop */}
         <aside className={`hidden md:flex flex-col bg-blue-800 transition-all duration-300 shadow-xl ${collapsed ? 'w-16' : 'w-60'}`}>
           <div className="flex items-center gap-2 px-3 py-4 border-b border-blue-700">
             <span className="text-3xl">💧</span>
@@ -36,7 +51,6 @@ export default function App() {
               </div>
             )}
           </div>
-
           <nav className="flex flex-col gap-1 p-2 flex-1">
             {menu.map(({ to, label, icon, end }) => (
               <NavLink key={to} to={to} end={end}
@@ -49,16 +63,13 @@ export default function App() {
               </NavLink>
             ))}
           </nav>
-
           <button onClick={() => setCollapsed(!collapsed)}
             className="m-3 p-2 rounded-xl bg-blue-700 hover:bg-blue-600 text-blue-100 hover:text-white transition text-xs">
             {collapsed ? '→' : '← Recolher'}
           </button>
         </aside>
 
-        {/* Main */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header */}
           <header className="bg-white border-b border-blue-100 px-4 py-3 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2">
               <span className="text-2xl">💧</span>
@@ -66,10 +77,12 @@ export default function App() {
                 Guilherme <span className="text-blue-500">Água e Gás</span>
               </h1>
             </div>
-            <span className="text-xs text-gray-400 hidden sm:block">Sistema de Gestão</span>
+            <button onClick={sair}
+              className="text-xs bg-red-50 text-red-500 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl transition font-semibold">
+              Sair →
+            </button>
           </header>
 
-          {/* Conteúdo */}
           <main className="flex-1 p-4 overflow-auto pb-24 md:pb-4">
             <Routes>
               <Route path="/" element={<Dashboard />} />
@@ -83,7 +96,6 @@ export default function App() {
           </main>
         </div>
 
-        {/* Bottom nav — visível só em mobile */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-blue-800 border-t border-blue-700 flex z-50">
           {menu.map(({ to, label, icon, end }) => (
             <NavLink key={to} to={to} end={end}
