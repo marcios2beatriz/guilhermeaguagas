@@ -114,7 +114,7 @@ export default function Login() {
             <p className="text-xs font-semibold text-gray-500">© {new Date().getFullYear()} Guilherme Água e Gás. Todos os direitos reservados.</p>
             <p className="text-xs text-gray-400">Desenvolvido por Juveniciu's Tech Soluções Automatizadas™</p>
             <p className="text-xs text-gray-400">✉ m.marcio.soares@hotmail.com</p>
-            <p className="text-xs text-gray-400">📞 (83) 98666-6562</p>
+            <p className="text-xs text-gray-400">📞 (83) 98862-3431</p>
           </div>
         </div>
       </div>
