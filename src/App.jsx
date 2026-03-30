@@ -47,11 +47,14 @@ export default function App() {
       <div className="flex min-h-screen bg-blue-50">
         <aside className={`hidden md:flex flex-col bg-blue-800 transition-all duration-300 shadow-xl ${collapsed ? 'w-16' : 'w-60'}`}>
           <div className="flex items-center gap-2 px-3 py-4 border-b border-blue-700">
-            <img src="/galao.png" alt="Galão" className="w-8 h-8 object-contain bg-white rounded-full" />
+            <img src="/galao.png" alt="Galão" className="w-8 h-8 object-contain bg-white rounded-full flex-shrink-0" />
             {!collapsed && (
-              <div>
-                <p className="font-bold text-sm leading-tight text-white">Guilherme</p>
-                <p className="text-xs text-blue-200">Água e Gás</p>
+              <div className="flex items-center gap-2 flex-1">
+                <div className="flex-1 text-center">
+                  <p className="font-bold text-sm leading-tight text-white">Guilherme</p>
+                  <p className="text-xs text-blue-200">Água e Gás</p>
+                </div>
+                <img src="/botijao.png" alt="Botijão" className="w-8 h-8 object-contain bg-white rounded-full flex-shrink-0" />
               </div>
             )}
           </div>
@@ -80,6 +83,7 @@ export default function App() {
               <h1 className="text-base font-bold text-blue-800">
                 Guilherme <span className="text-blue-500">Água e Gás</span>
               </h1>
+              <img src="/botijao.png" alt="Botijão" className="w-8 h-8 object-contain bg-white rounded-full" />
             </div>
             <button onClick={sair}
               className="text-xs bg-red-50 text-red-500 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl transition font-semibold">
