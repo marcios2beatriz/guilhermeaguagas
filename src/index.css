@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-blue-50 text-gray-800;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white border border-blue-100 rounded-2xl p-4 shadow-md;
+  }
+
+  .input {
+    @apply bg-white border border-blue-200 text-gray-800 placeholder-gray-400 rounded-xl px-4 py-2.5 text-sm w-full
+           focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition;
+  }
+
+  .btn-primary {
+    @apply bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-5 rounded-xl w-full
+           transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 text-sm;
+  }
+
+  .btn-success {
+    @apply bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl w-full
+           transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 text-sm;
+  }
+
+  .btn-danger {
+    @apply text-red-500 hover:text-red-700 text-xs transition;
+  }
+
+  .table-header {
+    @apply bg-blue-50 text-blue-700 text-xs uppercase tracking-wider;
+  }
+
+  .table-row {
+    @apply border-t border-blue-50 hover:bg-blue-50 transition;
+  }
+
+  /* Tabelas responsivas no mobile */
+  .table-responsive {
+    @apply w-full overflow-x-auto -mx-0;
+  }
+}
