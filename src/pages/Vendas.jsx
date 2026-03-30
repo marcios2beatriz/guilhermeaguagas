@@ -168,7 +168,7 @@ export default function Vendas() {
       `_Guilherme Água e Gás — (83) 9 8862-3431_`
 
     const tel = v.clientes?.telefone?.replace(/\D/g, '') || ''
-    const url = `https://wa.me/${tel ? '55' + tel : ''}?text=${encodeURIComponent(msg)}`
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`
     window.open(url, '_blank')
   }
 
