@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Toast from '../components/Toast'
 import { useToast } from '../hooks/useToast'
+import { exportarCSV } from '../lib/exportCsv'
 
 const formVazio = { nome: '', telefone: '', endereco: '', numero: '', complemento: '', bairro: '', referencia: '' }
 
@@ -75,9 +76,19 @@ export default function Clientes() {
   return (
     <div className="space-y-6">
       {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
-      <div>
-        <h2 className="text-2xl font-bold text-blue-800">👥 Clientes</h2>
-        <p className="text-gray-500 text-sm mt-1">Gerencie sua base de clientes</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-blue-800">👥 Clientes</h2>
+          <p className="text-gray-500 text-sm mt-1">Gerencie sua base de clientes</p>
+        </div>
+        <button onClick={() => exportarCSV(clientes.map(c => ({
+          Nome: c.nome, Telefone: c.telefone || '', Endereço: c.endereco || '',
+          Número: c.numero || '', Bairro: c.bairro || '', Complemento: c.complemento || '',
+          Referência: c.referencia || '', Fiado: c.saldo_fiado || 0
+        })), 'clientes')}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+          ⬇️ Exportar CSV
+        </button>
       </div>
 
       {/* Stats */}

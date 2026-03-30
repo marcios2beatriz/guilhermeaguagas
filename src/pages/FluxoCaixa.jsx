@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Toast from '../components/Toast'
 import { useToast } from '../hooks/useToast'
+import { exportarCSV } from '../lib/exportCsv'
 
 export default function FluxoCaixa() {
   const [lancamentos, setLancamentos] = useState([])
@@ -81,9 +82,20 @@ export default function FluxoCaixa() {
   return (
     <div className="space-y-6">
       {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
-      <div>
-        <h2 className="text-2xl font-bold text-blue-800">💰 Fluxo de Caixa</h2>
-        <p className="text-gray-500 text-sm mt-1">Controle de entradas e saídas</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-blue-800">💰 Fluxo de Caixa</h2>
+          <p className="text-gray-500 text-sm mt-1">Controle de entradas e saídas</p>
+        </div>
+        <button onClick={() => exportarCSV(filtrados.map(l => ({
+          Data: new Date(l.created_at).toLocaleDateString('pt-BR'),
+          Descrição: l.descricao,
+          Tipo: l.tipo,
+          Valor: l.valor,
+        })), 'fluxo_caixa')}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+          ⬇️ Exportar CSV
+        </button>
       </div>
 
       {/* Filtro de período */}

@@ -3,19 +3,28 @@ import { supabase } from '../lib/supabase'
 import ClienteSelect from '../components/ClienteSelect'
 import Toast from '../components/Toast'
 import { useToast } from '../hooks/useToast'
+import { exportarCSV } from '../lib/exportCsv'
+
+const ITEM_VAZIO = { produto_id: '', quantidade: 1, valor_unit: '', tem_desconto: false, desconto_tipo: 'percentual', desconto_valor: '' }
 
 const FORM_VAZIO = {
-  cliente_id: '', produto_id: '', quantidade: 1, valor_unit: '',
-  fiado: false, tem_desconto: false, desconto_tipo: 'percentual', desconto_valor: '',
+  cliente_id: '',
   forma_pagamento: 'dinheiro', pago_na_entrega: false, troco_para: '',
+  fiado: false,
 }
 
+function calcularTotalItem(item) {
+  const subtotal = parseFloat(item.valor_unit || 0) * parseInt(item.quantidade || 1)
+  if (!item.tem_desconto || !item.desconto_valor) return subtotal
+  if (item.desconto_tipo === 'percentual') return subtotal - (subtotal * parseFloat(item.desconto_valor) / 100)
+  return Math.max(0, subtotal - parseFloat(item.desconto_valor))
+}
+
+// mantém compatibilidade com venda única (edição)
 function calcularTotal(form) {
   const subtotal = parseFloat(form.valor_unit || 0) * parseInt(form.quantidade || 1)
   if (!form.tem_desconto || !form.desconto_valor) return subtotal
-  if (form.desconto_tipo === 'percentual') {
-    return subtotal - (subtotal * parseFloat(form.desconto_valor) / 100)
-  }
+  if (form.desconto_tipo === 'percentual') return subtotal - (subtotal * parseFloat(form.desconto_valor) / 100)
   return Math.max(0, subtotal - parseFloat(form.desconto_valor))
 }
 
@@ -24,6 +33,7 @@ export default function Vendas() {
   const [clientes, setClientes] = useState([])
   const [produtos, setProdutos] = useState([])
   const [form, setForm] = useState(FORM_VAZIO)
+  const [itens, setItens] = useState([{ ...ITEM_VAZIO }]) // carrinho de itens
   const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(false)
   const { toast, mostrar, fechar } = useToast()
@@ -44,6 +54,26 @@ export default function Vendas() {
   function selecionarProduto(produto_id) {
     const prod = produtos.find(p => p.id === produto_id)
     setForm(f => ({ ...f, produto_id, valor_unit: prod ? prod.preco.toString() : '' }))
+  }
+
+  function selecionarProdutoItem(idx, produto_id) {
+    const prod = produtos.find(p => p.id === produto_id)
+    setItens(prev => prev.map((it, i) => i === idx
+      ? { ...it, produto_id, valor_unit: prod ? prod.preco.toString() : '' }
+      : it
+    ))
+  }
+
+  function atualizarItem(idx, campo, valor) {
+    setItens(prev => prev.map((it, i) => i === idx ? { ...it, [campo]: valor } : it))
+  }
+
+  function adicionarItem() {
+    setItens(prev => [...prev, { ...ITEM_VAZIO }])
+  }
+
+  function removerItem(idx) {
+    setItens(prev => prev.filter((_, i) => i !== idx))
   }
 
   function iniciarEdicao(v) {
@@ -72,11 +102,12 @@ export default function Vendas() {
   async function salvar(e) {
     e.preventDefault()
     setLoading(true)
-    const total = calcularTotal(form)
-    const desconto_valor = form.tem_desconto && form.desconto_valor ? parseFloat(form.desconto_valor) : 0
-    const desconto_tipo = form.tem_desconto ? form.desconto_tipo : null
 
     if (editando) {
+      // Edição mantém lógica de item único
+      const total = calcularTotal(form)
+      const desconto_valor = form.tem_desconto && form.desconto_valor ? parseFloat(form.desconto_valor) : 0
+      const desconto_tipo = form.tem_desconto ? form.desconto_tipo : null
       const totalAntigo = editando.total
       const qtdAntiga = editando.quantidade
 
@@ -96,53 +127,47 @@ export default function Vendas() {
 
       if (error) { mostrar('Erro: ' + error.message, 'erro'); setLoading(false); return }
 
-      // Reverte estoque antigo e aplica novo
-      if (editando.produto_id) {
-        await supabase.rpc('decrementar_estoque', { p_produto_id: editando.produto_id, p_quantidade: -qtdAntiga })
-      }
-      if (form.produto_id) {
-        await supabase.rpc('decrementar_estoque', { p_produto_id: form.produto_id, p_quantidade: parseInt(form.quantidade) })
-      }
-
-      // Ajusta fiado: reverte o antigo e aplica o novo
-      if (editando.fiado && editando.cliente_id) {
-        await supabase.rpc('abater_fiado', { p_cliente_id: editando.cliente_id, p_valor: totalAntigo })
-      }
-      if (form.fiado && form.cliente_id) {
-        await supabase.rpc('incrementar_fiado', { p_cliente_id: form.cliente_id, p_valor: total })
-      }
+      if (editando.produto_id) await supabase.rpc('decrementar_estoque', { p_produto_id: editando.produto_id, p_quantidade: -qtdAntiga })
+      if (form.produto_id) await supabase.rpc('decrementar_estoque', { p_produto_id: form.produto_id, p_quantidade: parseInt(form.quantidade) })
+      if (editando.fiado && editando.cliente_id) await supabase.rpc('abater_fiado', { p_cliente_id: editando.cliente_id, p_valor: totalAntigo })
+      if (form.fiado && form.cliente_id) await supabase.rpc('incrementar_fiado', { p_cliente_id: form.cliente_id, p_valor: total })
 
       setEditando(null)
     } else {
-      const { error } = await supabase.from('vendas').insert([{
-        cliente_id: form.cliente_id || null,
-        produto_id: form.produto_id || null,
-        quantidade: parseInt(form.quantidade),
-        valor_unit: parseFloat(form.valor_unit),
-        total,
-        fiado: form.fiado,
-        desconto_tipo,
-        desconto_valor,
-        forma_pagamento: form.forma_pagamento,
-        pago_na_entrega: form.pago_na_entrega,
-        troco_para: form.troco_para ? parseFloat(form.troco_para) : null,
-      }])
-      if (error) { mostrar('Erro: ' + error.message, 'erro'); setLoading(false); return }
+      // Nova venda — múltiplos itens
+      const itensValidos = itens.filter(it => it.produto_id && it.valor_unit && it.quantidade)
+      if (!itensValidos.length) { mostrar('Adicione pelo menos um produto', 'erro'); setLoading(false); return }
 
-      // Diminui estoque
-      if (form.produto_id) {
-        await supabase.rpc('decrementar_estoque', { p_produto_id: form.produto_id, p_quantidade: parseInt(form.quantidade) })
-      }
+      for (const item of itensValidos) {
+        const total = calcularTotalItem(item)
+        const desconto_valor = item.tem_desconto && item.desconto_valor ? parseFloat(item.desconto_valor) : 0
+        const desconto_tipo = item.tem_desconto ? item.desconto_tipo : null
 
-      if (form.fiado && form.cliente_id) {
-        await supabase.rpc('incrementar_fiado', { p_cliente_id: form.cliente_id, p_valor: total })
+        const { error } = await supabase.from('vendas').insert([{
+          cliente_id: form.cliente_id || null,
+          produto_id: item.produto_id,
+          quantidade: parseInt(item.quantidade),
+          valor_unit: parseFloat(item.valor_unit),
+          total,
+          fiado: form.fiado,
+          desconto_tipo,
+          desconto_valor,
+          forma_pagamento: form.forma_pagamento,
+          pago_na_entrega: form.pago_na_entrega,
+          troco_para: form.troco_para ? parseFloat(form.troco_para) : null,
+        }])
+        if (error) { mostrar('Erro: ' + error.message, 'erro'); setLoading(false); return }
+
+        if (item.produto_id) await supabase.rpc('decrementar_estoque', { p_produto_id: item.produto_id, p_quantidade: parseInt(item.quantidade) })
+        if (form.fiado && form.cliente_id) await supabase.rpc('incrementar_fiado', { p_cliente_id: form.cliente_id, p_valor: total })
       }
     }
 
     setForm(FORM_VAZIO)
+    setItens([{ ...ITEM_VAZIO }])
     await carregar()
     setLoading(false)
-    mostrar(editando ? 'Venda atualizada!' : 'Venda registrada!')
+    mostrar(editando ? 'Venda atualizada!' : `${itens.filter(i => i.produto_id).length} item(s) registrado(s)!`)
   }
 
   function enviarWhatsApp(v) {
@@ -207,9 +232,23 @@ export default function Vendas() {
   return (
     <div className="space-y-6">
       {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
-      <div>
-        <h2 className="text-2xl font-bold text-blue-800">🛒 Vendas</h2>
-        <p className="text-gray-500 text-sm mt-1">Registre as vendas do dia</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-blue-800">🛒 Vendas</h2>
+          <p className="text-gray-500 text-sm mt-1">Registre as vendas do dia</p>
+        </div>
+        <button onClick={() => exportarCSV(vendas.map(v => ({
+          Data: new Date(v.created_at).toLocaleDateString('pt-BR'),
+          Cliente: v.clientes?.nome || '',
+          Produto: v.produtos?.nome || '',
+          Quantidade: v.quantidade,
+          'Valor Unit.': v.valor_unit,
+          Total: v.total,
+          Pagamento: v.fiado ? 'Fiado' : v.forma_pagamento || '',
+        })), 'vendas')}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+          ⬇️ Exportar CSV
+        </button>
       </div>
 
       {/* Stats */}
@@ -229,126 +268,123 @@ export default function Vendas() {
         <h3 className="text-sm font-semibold text-gray-600 mb-4">
           {editando ? '✏️ Editando Venda' : 'Nova Venda'}
         </h3>
-        <form onSubmit={salvar} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <form onSubmit={salvar} className="space-y-4">
+          {/* Cliente */}
           <ClienteSelect clientes={clientes} value={form.cliente_id}
             onChange={id => setForm({ ...form, cliente_id: id })} required />
 
-          <select required value={form.produto_id} onChange={e => selecionarProduto(e.target.value)} className="input">
-            <option value="">Selecione o produto</option>
-            {aguas.length > 0 && (
-              <optgroup label="💧 Água Mineral">
-                {aguas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.marca ? ` — ${p.marca}` : ''} (R$ {p.preco.toFixed(2)})</option>)}
-              </optgroup>
-            )}
-            {gases.length > 0 && (
-              <optgroup label="🔥 Gás de Cozinha">
-                {gases.map(p => <option key={p.id} value={p.id}>{p.nome} (R$ {p.preco.toFixed(2)})</option>)}
-              </optgroup>
-            )}
-          </select>
-
-          <input type="number" min="1" placeholder="Quantidade" value={form.quantidade}
-            onChange={e => setForm({ ...form, quantidade: e.target.value })} className="input" />
-
-          <input type="number" step="0.01" required placeholder="Valor unitário (R$)" value={form.valor_unit}
-            onChange={e => setForm({ ...form, valor_unit: e.target.value })} className="input" />
-
-          {form.valor_unit && form.quantidade && (
-            <div className="sm:col-span-2 space-y-2">
-              {/* Toggle desconto */}
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.tem_desconto}
-                  onChange={e => setForm({ ...form, tem_desconto: e.target.checked, desconto_valor: '' })}
-                  className="w-4 h-4 accent-blue-600" />
-                <span className="text-sm text-gray-600">Aplicar desconto</span>
-              </label>
-
-              {/* Campos de desconto */}
-              {form.tem_desconto && (
-                <div className="flex gap-2">
-                  <div className="flex bg-gray-100 rounded-xl p-1">
-                    <button type="button" onClick={() => setForm({ ...form, desconto_tipo: 'percentual' })}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${form.desconto_tipo === 'percentual' ? 'bg-white text-blue-700 shadow' : 'text-gray-400'}`}>
-                      %
-                    </button>
-                    <button type="button" onClick={() => setForm({ ...form, desconto_tipo: 'nominal' })}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${form.desconto_tipo === 'nominal' ? 'bg-white text-blue-700 shadow' : 'text-gray-400'}`}>
-                      R$
-                    </button>
+          {/* Itens — só na nova venda */}
+          {!editando && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Produtos</p>
+                <button type="button" onClick={adicionarItem}
+                  className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold px-3 py-1.5 rounded-xl transition">
+                  + Adicionar produto
+                </button>
+              </div>
+              {itens.map((item, idx) => (
+                <div key={idx} className="bg-gray-50 rounded-2xl p-3 space-y-2 border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-400">Item {idx + 1}</span>
+                    {itens.length > 1 && (
+                      <button type="button" onClick={() => removerItem(idx)} className="text-red-400 hover:text-red-600 text-xs">✕ Remover</button>
+                    )}
                   </div>
-                  <input type="number" step="0.01" min="0" placeholder={form.desconto_tipo === 'percentual' ? 'Ex: 10 (%)' : 'Ex: 5,00 (R$)'}
-                    value={form.desconto_valor}
-                    onChange={e => setForm({ ...form, desconto_valor: e.target.value })}
-                    className="input flex-1" />
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <select value={item.produto_id} onChange={e => selecionarProdutoItem(idx, e.target.value)} className="input sm:col-span-2">
+                      <option value="">Selecione o produto</option>
+                      {aguas.length > 0 && <optgroup label="💧 Água Mineral">{aguas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.marca ? ` — ${p.marca}` : ''} (R$ {p.preco.toFixed(2)})</option>)}</optgroup>}
+                      {gases.length > 0 && <optgroup label="🔥 Gás de Cozinha">{gases.map(p => <option key={p.id} value={p.id}>{p.nome} (R$ {p.preco.toFixed(2)})</option>)}</optgroup>}
+                    </select>
+                    <input type="number" min="1" placeholder="Qtd" value={item.quantidade}
+                      onChange={e => atualizarItem(idx, 'quantidade', e.target.value)} className="input" />
+                    <input type="number" step="0.01" placeholder="Valor unit. (R$)" value={item.valor_unit}
+                      onChange={e => atualizarItem(idx, 'valor_unit', e.target.value)} className="input" />
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={item.tem_desconto}
+                        onChange={e => atualizarItem(idx, 'tem_desconto', e.target.checked)}
+                        className="w-4 h-4 accent-blue-600" />
+                      <span className="text-xs text-gray-600">Desconto</span>
+                    </label>
+                    {item.tem_desconto && (
+                      <div className="flex gap-2 sm:col-span-2">
+                        <div className="flex bg-white rounded-xl border border-gray-200 p-0.5">
+                          <button type="button" onClick={() => atualizarItem(idx, 'desconto_tipo', 'percentual')}
+                            className={`px-2 py-1 rounded-lg text-xs font-semibold transition ${item.desconto_tipo === 'percentual' ? 'bg-blue-700 text-white' : 'text-gray-400'}`}>%</button>
+                          <button type="button" onClick={() => atualizarItem(idx, 'desconto_tipo', 'nominal')}
+                            className={`px-2 py-1 rounded-lg text-xs font-semibold transition ${item.desconto_tipo === 'nominal' ? 'bg-blue-700 text-white' : 'text-gray-400'}`}>R$</button>
+                        </div>
+                        <input type="number" step="0.01" min="0" placeholder="Valor desconto" value={item.desconto_valor}
+                          onChange={e => atualizarItem(idx, 'desconto_valor', e.target.value)} className="input flex-1" />
+                      </div>
+                    )}
+                  </div>
+                  {item.valor_unit && item.quantidade && (
+                    <div className="text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl px-3 py-1.5">
+                      Total: R$ {calcularTotalItem(item).toFixed(2)}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {/* Total geral do pedido */}
+              {itens.some(i => i.valor_unit && i.quantidade) && (
+                <div className="bg-blue-700 text-white rounded-2xl px-4 py-3 text-sm font-bold flex justify-between">
+                  <span>Total do Pedido</span>
+                  <span>R$ {itens.reduce((acc, i) => acc + calcularTotalItem(i), 0).toFixed(2)}</span>
                 </div>
               )}
-
-              {/* Preview do total */}
-              <div className={`rounded-xl px-4 py-2 text-sm font-semibold ${form.tem_desconto && form.desconto_valor ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>
-                {form.tem_desconto && form.desconto_valor ? (
-                  <span>
-                    Subtotal: R$ {(parseFloat(form.valor_unit) * parseInt(form.quantidade || 1)).toFixed(2)}
-                    {' → '}Total com desconto: <strong>R$ {calcularTotal(form).toFixed(2)}</strong>
-                  </span>
-                ) : (
-                  <span>Total: R$ {calcularTotal(form).toFixed(2)}</span>
-                )}
-              </div>
             </div>
           )}
 
-          <label className="flex items-center gap-2 cursor-pointer sm:col-span-2">
-            <input type="checkbox" checked={form.fiado} onChange={e => setForm({ ...form, fiado: e.target.checked })}
-              className="w-4 h-4 accent-blue-600" />
-            <span className="text-sm text-gray-600">Lançar no fiado</span>
-          </label>
+          {/* Edição — campos simples */}
+          {editando && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <select value={form.produto_id} onChange={e => selecionarProduto(e.target.value)} className="input">
+                <option value="">Selecione o produto</option>
+                {aguas.length > 0 && <optgroup label="💧 Água Mineral">{aguas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.marca ? ` — ${p.marca}` : ''}</option>)}</optgroup>}
+                {gases.length > 0 && <optgroup label="🔥 Gás de Cozinha">{gases.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</optgroup>}
+              </select>
+              <input type="number" min="1" placeholder="Quantidade" value={form.quantidade}
+                onChange={e => setForm({ ...form, quantidade: e.target.value })} className="input" />
+              <input type="number" step="0.01" placeholder="Valor unitário (R$)" value={form.valor_unit}
+                onChange={e => setForm({ ...form, valor_unit: e.target.value })} className="input sm:col-span-2" />
+            </div>
+          )}
 
           {/* Forma de pagamento */}
-          <div className="sm:col-span-2 space-y-3">
+          <div className="space-y-3">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Forma de Pagamento</p>
             <div className="flex gap-2 flex-wrap">
-              {[
-                { val: 'dinheiro', label: '💵 Dinheiro' },
-                { val: 'pix', label: '📱 Pix' },
-                { val: 'cartao', label: '💳 Cartão' },
-              ].map(op => (
+              {[{ val: 'dinheiro', label: '💵 Dinheiro' }, { val: 'pix', label: '📱 Pix' }, { val: 'cartao', label: '💳 Cartão' }].map(op => (
                 <button key={op.val} type="button"
                   onClick={() => setForm({ ...form, forma_pagamento: op.val, fiado: false })}
                   className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition ${form.forma_pagamento === op.val && !form.fiado ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>
                   {op.label}
                 </button>
               ))}
-              <button type="button"
-                onClick={() => setForm({ ...form, fiado: true, forma_pagamento: 'fiado' })}
+              <button type="button" onClick={() => setForm({ ...form, fiado: true, forma_pagamento: 'fiado' })}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition ${form.fiado ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-600 border-gray-200 hover:border-red-300'}`}>
                 📋 Fiado
               </button>
             </div>
-
-            <div className="flex gap-3 flex-wrap">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={form.pago_na_entrega}
-                  onChange={e => setForm({ ...form, pago_na_entrega: e.target.checked })}
-                  className="w-4 h-4 accent-blue-600" />
-                <span className="text-sm text-gray-600">Pagar na entrega</span>
-              </label>
-            </div>
-
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.pago_na_entrega}
+                onChange={e => setForm({ ...form, pago_na_entrega: e.target.checked })} className="w-4 h-4 accent-blue-600" />
+              <span className="text-sm text-gray-600">Pagar na entrega</span>
+            </label>
             {form.forma_pagamento === 'dinheiro' && !form.fiado && (
               <input type="number" step="0.01" placeholder="Troco para (R$) — opcional"
-                value={form.troco_para}
-                onChange={e => setForm({ ...form, troco_para: e.target.value })}
-                className="input" />
+                value={form.troco_para} onChange={e => setForm({ ...form, troco_para: e.target.value })} className="input" />
             )}
           </div>
 
-          <button type="submit" disabled={loading}
-            className={`sm:col-span-2 ${editando ? 'btn-success' : 'btn-primary'}`}>
+          <button type="submit" disabled={loading} className={editando ? 'btn-success' : 'btn-primary'}>
             {loading ? 'Salvando...' : editando ? '✓ Salvar Alterações' : '+ Registrar Venda'}
           </button>
           {editando && (
             <button type="button" onClick={cancelar}
-              className="sm:col-span-2 border border-gray-300 text-gray-600 hover:bg-gray-100 py-2.5 px-5 rounded-xl transition text-sm font-semibold">
+              className="w-full border border-gray-300 text-gray-600 hover:bg-gray-100 py-2.5 px-5 rounded-xl transition text-sm font-semibold mt-2">
               Cancelar
             </button>
           )}
