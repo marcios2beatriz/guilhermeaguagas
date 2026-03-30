@@ -26,7 +26,7 @@ export default function Vendas() {
 
   async function carregar() {
     const [{ data: v }, { data: c }, { data: p }] = await Promise.all([
-      supabase.from('vendas').select('*, clientes(nome), produtos(nome, categoria)').order('created_at', { ascending: false }).limit(100),
+      supabase.from('vendas').select('*, clientes(nome, telefone, endereco, numero, bairro, complemento), produtos(nome, categoria)').order('created_at', { ascending: false }).limit(100),
       supabase.from('clientes').select('id, nome').order('nome'),
       supabase.from('produtos').select('*').eq('ativo', true).order('categoria').order('nome'),
     ])
@@ -151,18 +151,24 @@ export default function Vendas() {
       ? `\n🏷️ Desconto: ${v.desconto_tipo === 'percentual' ? v.desconto_valor + '%' : 'R$ ' + v.desconto_valor.toFixed(2)}`
       : ''
 
+    const endParts = [v.clientes?.endereco, v.clientes?.numero, v.clientes?.complemento, v.clientes?.bairro].filter(Boolean)
+    const endereco = endParts.length > 0 ? endParts.join(', ') : null
+    const telefone = v.clientes?.telefone || null
+
     const msg = `🛒 *Pedido — Guilherme Água e Gás*\n\n` +
       `👤 Cliente: ${cliente}\n` +
-      `📦 Produto: ${produto}\n` +
+      (telefone ? `📞 Telefone: ${telefone}\n` : '') +
+      (endereco ? `📍 Endereço: ${endereco}\n` : '') +
+      `\n📦 Produto: ${produto}\n` +
       `🔢 Quantidade: ${v.quantidade}\n` +
       `💰 Valor unit.: R$ ${v.valor_unit?.toFixed(2)}${desconto}\n` +
       `✅ *Total: R$ ${v.total?.toFixed(2)}*\n` +
-      `💳 Pagamento: ${pgto}${entrega}${troco}\n` +
+      `\n💳 Pagamento: ${pgto}${entrega}${troco}\n` +
       `📅 Data: ${data}\n\n` +
       `_Guilherme Água e Gás — (83) 9 8862-3431_`
 
-    const telefone = v.clientes?.telefone?.replace(/\D/g, '') || ''
-    const url = `https://wa.me/${telefone ? '55' + telefone : ''}?text=${encodeURIComponent(msg)}`
+    const tel = v.clientes?.telefone?.replace(/\D/g, '') || ''
+    const url = `https://wa.me/${tel ? '55' + tel : ''}?text=${encodeURIComponent(msg)}`
     window.open(url, '_blank')
   }
 
