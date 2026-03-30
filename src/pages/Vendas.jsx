@@ -223,8 +223,8 @@ export default function Vendas() {
           {editando ? '✏️ Editando Venda' : 'Nova Venda'}
         </h3>
         <form onSubmit={salvar} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <select value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })} className="input">
-            <option value="">Cliente (opcional)</option>
+          <select required value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })} className="input">
+            <option value="">Selecione o cliente *</option>
             {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
 
