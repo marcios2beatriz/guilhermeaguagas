@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-const FORM_VAZIO = { cliente_id: '', produto_id: '', quantidade: 1, valor_unit: '', fiado: false, tem_desconto: false, desconto_tipo: 'percentual', desconto_valor: '' }
+const FORM_VAZIO = {
+  cliente_id: '', produto_id: '', quantidade: 1, valor_unit: '',
+  fiado: false, tem_desconto: false, desconto_tipo: 'percentual', desconto_valor: '',
+  forma_pagamento: 'dinheiro', pago_na_entrega: false, troco_para: '',
+}
 
 function calcularTotal(form) {
   const subtotal = parseFloat(form.valor_unit || 0) * parseInt(form.quantidade || 1)
@@ -49,6 +53,9 @@ export default function Vendas() {
       tem_desconto: !!v.desconto_valor,
       desconto_tipo: v.desconto_tipo || 'percentual',
       desconto_valor: v.desconto_valor ? v.desconto_valor.toString() : '',
+      forma_pagamento: v.forma_pagamento || 'dinheiro',
+      pago_na_entrega: v.pago_na_entrega || false,
+      troco_para: v.troco_para ? v.troco_para.toString() : '',
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -78,6 +85,9 @@ export default function Vendas() {
         fiado: form.fiado,
         desconto_tipo,
         desconto_valor,
+        forma_pagamento: form.forma_pagamento,
+        pago_na_entrega: form.pago_na_entrega,
+        troco_para: form.troco_para ? parseFloat(form.troco_para) : null,
       }).eq('id', editando.id)
 
       if (error) { alert('Erro: ' + error.message); setLoading(false); return }
@@ -109,6 +119,9 @@ export default function Vendas() {
         fiado: form.fiado,
         desconto_tipo,
         desconto_valor,
+        forma_pagamento: form.forma_pagamento,
+        pago_na_entrega: form.pago_na_entrega,
+        troco_para: form.troco_para ? parseFloat(form.troco_para) : null,
       }])
       if (error) { alert('Erro: ' + error.message); setLoading(false); return }
 
@@ -125,6 +138,32 @@ export default function Vendas() {
     setForm(FORM_VAZIO)
     await carregar()
     setLoading(false)
+  }
+
+  function enviarWhatsApp(v) {
+    const cliente = v.clientes?.nome || 'Cliente'
+    const produto = v.produtos?.nome || v.produto || 'Produto'
+    const data = new Date(v.created_at).toLocaleDateString('pt-BR')
+    const pgto = v.fiado ? 'Fiado' : v.forma_pagamento === 'pix' ? 'Pix' : v.forma_pagamento === 'cartao' ? 'Cartão' : 'Dinheiro'
+    const entrega = v.pago_na_entrega ? '\n💳 Pagamento na entrega' : ''
+    const troco = v.troco_para > 0 ? `\n💵 Troco para: R$ ${v.troco_para.toFixed(2)}` : ''
+    const desconto = v.desconto_valor > 0
+      ? `\n🏷️ Desconto: ${v.desconto_tipo === 'percentual' ? v.desconto_valor + '%' : 'R$ ' + v.desconto_valor.toFixed(2)}`
+      : ''
+
+    const msg = `🛒 *Pedido — Guilherme Água e Gás*\n\n` +
+      `👤 Cliente: ${cliente}\n` +
+      `📦 Produto: ${produto}\n` +
+      `🔢 Quantidade: ${v.quantidade}\n` +
+      `💰 Valor unit.: R$ ${v.valor_unit?.toFixed(2)}${desconto}\n` +
+      `✅ *Total: R$ ${v.total?.toFixed(2)}*\n` +
+      `💳 Pagamento: ${pgto}${entrega}${troco}\n` +
+      `📅 Data: ${data}\n\n` +
+      `_Guilherme Água e Gás — (83) 9 8862-3431_`
+
+    const telefone = v.clientes?.telefone?.replace(/\D/g, '') || ''
+    const url = `https://wa.me/${telefone ? '55' + telefone : ''}?text=${encodeURIComponent(msg)}`
+    window.open(url, '_blank')
   }
 
   async function excluir(v) {
@@ -253,6 +292,45 @@ export default function Vendas() {
             <span className="text-sm text-gray-600">Lançar no fiado</span>
           </label>
 
+          {/* Forma de pagamento */}
+          <div className="sm:col-span-2 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Forma de Pagamento</p>
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { val: 'dinheiro', label: '💵 Dinheiro' },
+                { val: 'pix', label: '📱 Pix' },
+                { val: 'cartao', label: '💳 Cartão' },
+              ].map(op => (
+                <button key={op.val} type="button"
+                  onClick={() => setForm({ ...form, forma_pagamento: op.val, fiado: false })}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition ${form.forma_pagamento === op.val && !form.fiado ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>
+                  {op.label}
+                </button>
+              ))}
+              <button type="button"
+                onClick={() => setForm({ ...form, fiado: true, forma_pagamento: 'fiado' })}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition ${form.fiado ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-600 border-gray-200 hover:border-red-300'}`}>
+                📋 Fiado
+              </button>
+            </div>
+
+            <div className="flex gap-3 flex-wrap">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.pago_na_entrega}
+                  onChange={e => setForm({ ...form, pago_na_entrega: e.target.checked })}
+                  className="w-4 h-4 accent-blue-600" />
+                <span className="text-sm text-gray-600">Pagar na entrega</span>
+              </label>
+            </div>
+
+            {form.forma_pagamento === 'dinheiro' && !form.fiado && (
+              <input type="number" step="0.01" placeholder="Troco para (R$) — opcional"
+                value={form.troco_para}
+                onChange={e => setForm({ ...form, troco_para: e.target.value })}
+                className="input" />
+            )}
+          </div>
+
           <button type="submit" disabled={loading}
             className={`sm:col-span-2 ${editando ? 'btn-success' : 'btn-primary'}`}>
             {loading ? 'Salvando...' : editando ? '✓ Salvar Alterações' : '+ Registrar Venda'}
@@ -298,13 +376,23 @@ export default function Vendas() {
                 </td>
                 <td className="p-4">
                   {v.fiado
-                    ? <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-600 font-semibold whitespace-nowrap">Fiado</span>
-                    : <span className="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700 font-semibold whitespace-nowrap">Pago</span>}
+                    ? <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-600 font-semibold whitespace-nowrap">📋 Fiado</span>
+                    : v.forma_pagamento === 'pix'
+                    ? <span className="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-700 font-semibold whitespace-nowrap">📱 Pix</span>
+                    : v.forma_pagamento === 'cartao'
+                    ? <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700 font-semibold whitespace-nowrap">💳 Cartão</span>
+                    : <span className="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700 font-semibold whitespace-nowrap">💵 Dinheiro</span>}
+                  {v.pago_na_entrega && <span className="ml-1 px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700 font-semibold whitespace-nowrap">Na entrega</span>}
+                  {v.troco_para > 0 && <span className="block text-xs text-gray-400 mt-0.5">Troco p/ R$ {v.troco_para.toFixed(2)}</span>}
                 </td>
                 <td className="p-4">
-                  <div className="flex gap-3">
-                    <button onClick={() => iniciarEdicao(v)} className="text-blue-500 hover:text-blue-700 text-xs font-semibold transition whitespace-nowrap">✏️ Editar</button>
-                    <button onClick={() => excluir(v)} className="btn-danger whitespace-nowrap">🗑️ Excluir</button>
+                  <div className="flex gap-2 flex-wrap">
+                    <button onClick={() => enviarWhatsApp(v)}
+                      className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded-lg transition whitespace-nowrap">
+                      📲 WhatsApp
+                    </button>
+                    <button onClick={() => iniciarEdicao(v)} className="text-blue-500 hover:text-blue-700 text-xs font-semibold transition whitespace-nowrap">✏️</button>
+                    <button onClick={() => excluir(v)} className="btn-danger whitespace-nowrap">🗑️</button>
                   </div>
                 </td>
               </tr>
