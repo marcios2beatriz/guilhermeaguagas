@@ -60,7 +60,12 @@ export default function Login() {
       </div>
 
       {/* Lado direito — formulário */}
-      <div className="flex-1 flex items-center justify-center bg-blue-50 px-6 py-12">
+      <div className="flex-1 flex items-center justify-center bg-blue-50 px-6 py-12 relative overflow-hidden">
+        {/* Marca d'água fundo */}
+        <img src="/galao.png" alt="" className="absolute -bottom-10 -left-10 w-72 h-72 object-contain opacity-5 rotate-[-15deg] pointer-events-none select-none" />
+        <img src="/botijao.png" alt="" className="absolute -top-10 -right-10 w-72 h-72 object-contain opacity-5 rotate-[15deg] pointer-events-none select-none" />
+        <img src="/galao.png" alt="" className="absolute top-1/2 left-4 w-40 h-40 object-contain opacity-[0.04] -translate-y-1/2 pointer-events-none select-none" />
+        <img src="/botijao.png" alt="" className="absolute top-1/3 right-8 w-32 h-32 object-contain opacity-[0.04] pointer-events-none select-none" />
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
