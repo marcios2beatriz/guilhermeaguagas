@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import ClienteSelect from '../components/ClienteSelect'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const FORM_VAZIO = {
   cliente_id: '', produto_id: '', quantidade: 1, valor_unit: '',
@@ -21,8 +24,9 @@ export default function Vendas() {
   const [clientes, setClientes] = useState([])
   const [produtos, setProdutos] = useState([])
   const [form, setForm] = useState(FORM_VAZIO)
-  const [editando, setEditando] = useState(null) // venda original antes da edição
+  const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(false)
+  const { toast, mostrar, fechar } = useToast()
 
   async function carregar() {
     const [{ data: v }, { data: c }, { data: p }] = await Promise.all([
@@ -90,7 +94,7 @@ export default function Vendas() {
         troco_para: form.troco_para ? parseFloat(form.troco_para) : null,
       }).eq('id', editando.id)
 
-      if (error) { alert('Erro: ' + error.message); setLoading(false); return }
+      if (error) { mostrar('Erro: ' + error.message, 'erro'); setLoading(false); return }
 
       // Reverte estoque antigo e aplica novo
       if (editando.produto_id) {
@@ -123,7 +127,7 @@ export default function Vendas() {
         pago_na_entrega: form.pago_na_entrega,
         troco_para: form.troco_para ? parseFloat(form.troco_para) : null,
       }])
-      if (error) { alert('Erro: ' + error.message); setLoading(false); return }
+      if (error) { mostrar('Erro: ' + error.message, 'erro'); setLoading(false); return }
 
       // Diminui estoque
       if (form.produto_id) {
@@ -138,6 +142,7 @@ export default function Vendas() {
     setForm(FORM_VAZIO)
     await carregar()
     setLoading(false)
+    mostrar(editando ? 'Venda atualizada!' : 'Venda registrada!')
   }
 
   function enviarWhatsApp(v) {
@@ -176,7 +181,7 @@ export default function Vendas() {
     if (!confirm(`Excluir venda de R$ ${v.total.toFixed(2)}?`)) return
 
     const { error } = await supabase.from('vendas').delete().eq('id', v.id)
-    if (error) { alert('Erro: ' + error.message); return }
+    if (error) { mostrar('Erro: ' + error.message, 'erro'); return }
 
     // Devolve estoque
     if (v.produto_id) {
@@ -189,6 +194,7 @@ export default function Vendas() {
     }
 
     await carregar()
+    mostrar('Venda excluída!', 'info')
   }
 
   const totalDia = vendas
@@ -200,6 +206,7 @@ export default function Vendas() {
 
   return (
     <div className="space-y-6">
+      {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
       <div>
         <h2 className="text-2xl font-bold text-blue-800">🛒 Vendas</h2>
         <p className="text-gray-500 text-sm mt-1">Registre as vendas do dia</p>
@@ -223,10 +230,8 @@ export default function Vendas() {
           {editando ? '✏️ Editando Venda' : 'Nova Venda'}
         </h3>
         <form onSubmit={salvar} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <select required value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })} className="input">
-            <option value="">Selecione o cliente *</option>
-            {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </select>
+          <ClienteSelect clientes={clientes} value={form.cliente_id}
+            onChange={id => setForm({ ...form, cliente_id: id })} required />
 
           <select required value={form.produto_id} onChange={e => selecionarProduto(e.target.value)} className="input">
             <option value="">Selecione o produto</option>
@@ -412,3 +417,4 @@ export default function Vendas() {
     </div>
   )
 }
+

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 const formVazio = { nome: '', telefone: '', endereco: '', numero: '', complemento: '', bairro: '', referencia: '' }
 
@@ -8,6 +10,7 @@ export default function Clientes() {
   const [form, setForm] = useState(formVazio)
   const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(false)
+  const { toast, mostrar, fechar } = useToast()
 
   async function carregar() {
     const { data } = await supabase.from('clientes').select('*').order('nome')
@@ -21,11 +24,13 @@ export default function Clientes() {
     setLoading(true)
     if (editando) {
       const { error } = await supabase.from('clientes').update(form).eq('id', editando)
-      if (error) { alert('Erro: ' + error.message); setLoading(false); return }
+      if (error) { mostrar('Erro: ' + error.message, 'erro'); setLoading(false); return }
       setEditando(null)
+      mostrar('Cliente atualizado!')
     } else {
       const { error } = await supabase.from('clientes').insert([form])
-      if (error) { alert('Erro: ' + error.message); setLoading(false); return }
+      if (error) { mostrar('Erro: ' + error.message, 'erro'); setLoading(false); return }
+      mostrar('Cliente cadastrado!')
     }
     setForm(formVazio)
     await carregar()
@@ -69,6 +74,7 @@ export default function Clientes() {
 
   return (
     <div className="space-y-6">
+      {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
       <div>
         <h2 className="text-2xl font-bold text-blue-800">👥 Clientes</h2>
         <p className="text-gray-500 text-sm mt-1">Gerencie sua base de clientes</p>

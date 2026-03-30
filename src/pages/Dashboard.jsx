@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 function Card({ title, value, sub, color = 'text-blue-700', bg = 'bg-white' }) {
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [clientes, setClientes] = useState([])
   const [fiado, setFiado] = useState(0)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     async function carregar() {
@@ -57,12 +59,43 @@ export default function Dashboard() {
 
   if (loading) return <div className="text-center text-gray-400 py-20">Carregando...</div>
 
+  const alertasEstoque = produtos.filter(p =>
+    (p.categoria === 'agua' && p.estoque <= 5) || (p.categoria === 'gas' && p.estoque <= 3)
+  )
+
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-blue-800">📊 Dashboard</h2>
-        <p className="text-gray-500 text-sm mt-1">Visão geral do negócio</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-blue-800">📊 Dashboard</h2>
+          <p className="text-gray-500 text-sm mt-1">Visão geral do negócio</p>
+        </div>
+        {/* Atalhos rápidos */}
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => navigate('/vendas')}
+            className="btn-primary py-2 px-4 text-sm w-auto">
+            + Nova Venda
+          </button>
+          <button onClick={() => navigate('/clientes')}
+            className="bg-white border-2 border-blue-700 text-blue-700 hover:bg-blue-50 font-bold py-2 px-4 rounded-xl transition text-sm">
+            + Novo Cliente
+          </button>
+        </div>
       </div>
+
+      {/* Alertas de estoque baixo */}
+      {alertasEstoque.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 space-y-2">
+          <p className="text-red-700 font-bold text-sm">⚠️ Estoque baixo — reposição necessária</p>
+          <div className="flex flex-wrap gap-2">
+            {alertasEstoque.map(p => (
+              <span key={p.id} className="bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full">
+                {p.nome}{p.marca ? ` (${p.marca})` : ''} — {p.estoque} un.
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Vendas */}
       <div>

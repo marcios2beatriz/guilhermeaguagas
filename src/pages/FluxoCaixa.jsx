@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 export default function FluxoCaixa() {
   const [lancamentos, setLancamentos] = useState([])
   const [form, setForm] = useState({ descricao: '', tipo: 'entrada', valor: '' })
-  const [editando, setEditando] = useState(null) // guarda o lançamento em edição
+  const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [periodo, setPeriodo] = useState('mes') // hoje, semana, mes, tudo
+  const { toast, mostrar, fechar } = useToast()
 
   async function carregar() {
     const { data } = await supabase.from('fluxo_caixa').select('*, clientes(nome)')
-      .order('created_at', { ascending: false }).limit(100)
+      .order('created_at', { ascending: false }).limit(500)
     setLancamentos(data || [])
   }
 
@@ -25,15 +29,17 @@ export default function FluxoCaixa() {
         tipo: form.tipo,
         valor: parseFloat(form.valor),
       }).eq('id', editando)
-      if (error) { alert('Erro ao editar: ' + error.message); setLoading(false); return }
+      if (error) { mostrar('Erro ao editar: ' + error.message, 'erro'); setLoading(false); return }
       setEditando(null)
+      mostrar('Lançamento atualizado!')
     } else {
       const { error } = await supabase.from('fluxo_caixa').insert([{
         descricao: form.descricao,
         tipo: form.tipo,
         valor: parseFloat(form.valor),
       }])
-      if (error) { alert('Erro ao salvar: ' + error.message); setLoading(false); return }
+      if (error) { mostrar('Erro ao salvar: ' + error.message, 'erro'); setLoading(false); return }
+      mostrar('Lançamento registrado!')
     }
 
     setForm({ descricao: '', tipo: 'entrada', valor: '' })
@@ -59,15 +65,40 @@ export default function FluxoCaixa() {
     await carregar()
   }
 
-  const entradas = lancamentos.filter(l => l.tipo === 'entrada').reduce((acc, l) => acc + l.valor, 0)
-  const saidas = lancamentos.filter(l => l.tipo === 'saida').reduce((acc, l) => acc + l.valor, 0)
+  const hoje = new Date()
+  const filtrados = lancamentos.filter(l => {
+    const d = new Date(l.created_at)
+    if (periodo === 'hoje') return d.toDateString() === hoje.toDateString()
+    if (periodo === 'semana') return (hoje - d) <= 7 * 24 * 60 * 60 * 1000
+    if (periodo === 'mes') return d.getMonth() === hoje.getMonth() && d.getFullYear() === hoje.getFullYear()
+    return true
+  })
+
+  const entradas = filtrados.filter(l => l.tipo === 'entrada').reduce((acc, l) => acc + l.valor, 0)
+  const saidas = filtrados.filter(l => l.tipo === 'saida').reduce((acc, l) => acc + l.valor, 0)
   const saldo = entradas - saidas
 
   return (
     <div className="space-y-6">
+      {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
       <div>
         <h2 className="text-2xl font-bold text-blue-800">💰 Fluxo de Caixa</h2>
         <p className="text-gray-500 text-sm mt-1">Controle de entradas e saídas</p>
+      </div>
+
+      {/* Filtro de período */}
+      <div className="flex gap-2 flex-wrap">
+        {[
+          { key: 'hoje', label: 'Hoje' },
+          { key: 'semana', label: '7 dias' },
+          { key: 'mes', label: 'Este mês' },
+          { key: 'tudo', label: 'Tudo' },
+        ].map(p => (
+          <button key={p.key} onClick={() => setPeriodo(p.key)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition border-2 ${periodo === p.key ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400'}`}>
+            {p.label}
+          </button>
+        ))}
       </div>
 
       {/* Stats */}
@@ -129,7 +160,7 @@ export default function FluxoCaixa() {
             </tr>
           </thead>
           <tbody>
-            {lancamentos.map(l => (
+            {filtrados.map(l => (
               <tr key={l.id} className={`table-row ${editando === l.id ? 'bg-blue-50' : ''}`}>
                 <td className="p-4 text-gray-400">{new Date(l.created_at).toLocaleDateString('pt-BR')}</td>
                 <td className="p-4">{l.descricao}</td>
@@ -152,7 +183,7 @@ export default function FluxoCaixa() {
                 </td>
               </tr>
             ))}
-            {lancamentos.length === 0 && (
+            {filtrados.length === 0 && (
               <tr><td colSpan={5} className="p-8 text-center text-gray-400">Nenhum lançamento</td></tr>
             )}
           </tbody>
