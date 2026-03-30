@@ -165,7 +165,7 @@ export default function Vendas() {
       `✅ *Total: R$ ${v.total?.toFixed(2)}*\n` +
       `\n💳 Pagamento: ${pgto}${entrega}${troco}\n` +
       `📅 Data: ${data}\n\n` +
-      `_Guilherme Água e Gás — (83) 9 8862-3431_`
+      `_Guilherme Água e Gás — (83) 98666-6562_`
 
     const tel = v.clientes?.telefone?.replace(/\D/g, '') || ''
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`
