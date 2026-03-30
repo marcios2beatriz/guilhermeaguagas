@@ -191,8 +191,7 @@ export default function Historico() {
           <div class="footer">
             <div class="footer-left">
               <p><strong>Guilherme Água e Gás</strong></p>
-              <p>Desenvolvido por Juveniciu's Tech Soluções Automatizadas™</p>
-              <p>✉ m.marcio.soares@hotmail.com &nbsp;|&nbsp; 📞 (83) 98666-6562</p>
+              <p>📞 (83) 98666-6562</p>
             </div>
             <div class="footer-right">
               <div class="assinatura">Assinatura do Responsável</div>
