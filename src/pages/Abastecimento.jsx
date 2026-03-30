@@ -5,6 +5,7 @@ export default function Abastecimento() {
   const [registros, setRegistros] = useState([])
   const [produtos, setProdutos] = useState([])
   const [form, setForm] = useState({ produto_id: '', quantidade: '', preco_compra: '', preco_venda: '', observacao: '' })
+  const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(false)
 
   async function carregar() {
@@ -34,33 +35,70 @@ export default function Abastecimento() {
   async function salvar(e) {
     e.preventDefault()
     setLoading(true)
-    const { error } = await supabase.from('abastecimentos').insert([{
-      produto_id: form.produto_id || null,
-      quantidade: qtd,
-      preco_compra: precoCompra,
-      preco_venda: precoVenda,
-      total_compra: totalCompra,
-      total_venda_previsto: totalVenda,
-      lucro_previsto: lucro,
-      observacao: form.observacao || null,
-    }])
-    if (error) { alert('Erro: ' + error.message); setLoading(false); return }
 
-    // Atualiza estoque do produto
-    if (form.produto_id) {
-      await supabase.rpc('decrementar_estoque', { p_produto_id: form.produto_id, p_quantidade: -qtd })
+    if (editando) {
+      // Reverte estoque antigo
+      if (editando.produto_id) {
+        await supabase.rpc('decrementar_estoque', { p_produto_id: editando.produto_id, p_quantidade: editando.quantidade })
+      }
+      const { error } = await supabase.from('abastecimentos').update({
+        produto_id: form.produto_id || null,
+        quantidade: qtd,
+        preco_compra: precoCompra,
+        preco_venda: precoVenda,
+        total_compra: totalCompra,
+        total_venda_previsto: totalVenda,
+        lucro_previsto: lucro,
+        observacao: form.observacao || null,
+      }).eq('id', editando.id)
+      if (error) { alert('Erro: ' + error.message); setLoading(false); return }
+      // Aplica novo estoque
+      if (form.produto_id) {
+        await supabase.rpc('decrementar_estoque', { p_produto_id: form.produto_id, p_quantidade: -qtd })
+      }
+      setEditando(null)
+    } else {
+      const { error } = await supabase.from('abastecimentos').insert([{
+        produto_id: form.produto_id || null,
+        quantidade: qtd,
+        preco_compra: precoCompra,
+        preco_venda: precoVenda,
+        total_compra: totalCompra,
+        total_venda_previsto: totalVenda,
+        lucro_previsto: lucro,
+        observacao: form.observacao || null,
+      }])
+      if (error) { alert('Erro: ' + error.message); setLoading(false); return }
+      if (form.produto_id) {
+        await supabase.rpc('decrementar_estoque', { p_produto_id: form.produto_id, p_quantidade: -qtd })
+      }
+      await supabase.from('fluxo_caixa').insert([{
+        descricao: `Abastecimento — ${produtos.find(p => p.id === form.produto_id)?.nome || 'Produto'}`,
+        tipo: 'saida',
+        valor: totalCompra,
+      }])
     }
-
-    // Lança no fluxo de caixa como saída
-    await supabase.from('fluxo_caixa').insert([{
-      descricao: `Abastecimento — ${produtos.find(p => p.id === form.produto_id)?.nome || 'Produto'}`,
-      tipo: 'saida',
-      valor: totalCompra,
-    }])
 
     setForm({ produto_id: '', quantidade: '', preco_compra: '', preco_venda: '', observacao: '' })
     await carregar()
     setLoading(false)
+  }
+
+  function iniciarEdicao(r) {
+    setEditando(r)
+    setForm({
+      produto_id: r.produto_id || '',
+      quantidade: r.quantidade.toString(),
+      preco_compra: r.preco_compra.toString(),
+      preco_venda: r.preco_venda.toString(),
+      observacao: r.observacao || '',
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function cancelar() {
+    setEditando(null)
+    setForm({ produto_id: '', quantidade: '', preco_compra: '', preco_venda: '', observacao: '' })
   }
 
   async function excluir(r) {
@@ -107,7 +145,9 @@ export default function Abastecimento() {
 
       {/* Form */}
       <div className="card">
-        <h3 className="text-sm font-semibold text-gray-600 mb-4">Registrar Abastecimento</h3>
+        <h3 className="text-sm font-semibold text-gray-600 mb-4">
+          {editando ? '✏️ Editando Abastecimento' : 'Registrar Abastecimento'}
+        </h3>
         <form onSubmit={salvar} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <select required value={form.produto_id} onChange={e => selecionarProduto(e.target.value)} className="input sm:col-span-2">
             <option value="">Selecione o produto</option>
@@ -155,9 +195,15 @@ export default function Abastecimento() {
             </div>
           )}
 
-          <button type="submit" disabled={loading} className="btn-primary sm:col-span-2">
-            {loading ? 'Salvando...' : '+ Registrar Abastecimento'}
+          <button type="submit" disabled={loading} className={`sm:col-span-2 ${editando ? 'btn-success' : 'btn-primary'}`}>
+            {loading ? 'Salvando...' : editando ? '✓ Salvar Alterações' : '+ Registrar Abastecimento'}
           </button>
+          {editando && (
+            <button type="button" onClick={cancelar}
+              className="sm:col-span-2 border border-gray-300 text-gray-600 hover:bg-gray-100 py-2.5 px-5 rounded-xl transition text-sm font-semibold">
+              Cancelar
+            </button>
+          )}
         </form>
       </div>
 
@@ -196,7 +242,10 @@ export default function Abastecimento() {
                     <span className="text-xs text-gray-400 ml-1">({margem}%)</span>
                   </td>
                   <td className="p-4">
-                    <button onClick={() => excluir(r)} className="btn-danger">🗑️</button>
+                    <div className="flex gap-3">
+                      <button onClick={() => iniciarEdicao(r)} className="text-blue-500 hover:text-blue-700 text-xs font-semibold transition whitespace-nowrap">✏️ Editar</button>
+                      <button onClick={() => excluir(r)} className="btn-danger whitespace-nowrap">🗑️ Excluir</button>
+                    </div>
                   </td>
                 </tr>
               )
