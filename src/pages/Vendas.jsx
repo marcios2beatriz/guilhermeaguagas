@@ -33,8 +33,9 @@ export default function Vendas() {
   const [clientes, setClientes] = useState([])
   const [produtos, setProdutos] = useState([])
   const [form, setForm] = useState(FORM_VAZIO)
+  const hoje = new Date().toISOString().split('T')[0]
   const [aba, setAba] = useState('nova')
-  const [filtro, setFiltro] = useState({ de: '', ate: '', cliente_id: '', forma_pagamento: '' })
+  const [filtro, setFiltro] = useState({ de: hoje, ate: hoje, cliente_id: '', forma_pagamento: '' })
   const [itens, setItens] = useState([{ ...ITEM_VAZIO }]) // carrinho de itens
   const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(false)
