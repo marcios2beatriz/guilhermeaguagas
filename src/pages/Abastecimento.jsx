@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { exportarCSV } from '../lib/exportCsv'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 export default function Abastecimento() {
   const [registros, setRegistros] = useState([])
@@ -7,6 +10,10 @@ export default function Abastecimento() {
   const [form, setForm] = useState({ produto_id: '', quantidade: '', preco_compra: '', preco_venda: '', observacao: '' })
   const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [aba, setAba] = useState('novo') // 'novo' | 'historico'
+  const [filtroData, setFiltroData] = useState({ de: '', ate: '' })
+  const [filtroProduto, setFiltroProduto] = useState('')
+  const { toast, mostrar, fechar } = useToast()
 
   async function carregar() {
     const [{ data: r }, { data: p }] = await Promise.all([
@@ -37,7 +44,6 @@ export default function Abastecimento() {
     setLoading(true)
 
     if (editando) {
-      // Reverte estoque antigo
       if (editando.produto_id) {
         await supabase.rpc('decrementar_estoque', { p_produto_id: editando.produto_id, p_quantidade: editando.quantidade })
       }
@@ -52,7 +58,6 @@ export default function Abastecimento() {
         observacao: form.observacao || null,
       }).eq('id', editando.id)
       if (error) { alert('Erro: ' + error.message); setLoading(false); return }
-      // Aplica novo estoque
       if (form.produto_id) {
         await supabase.rpc('decrementar_estoque', { p_produto_id: form.produto_id, p_quantidade: -qtd })
       }
@@ -104,28 +109,65 @@ export default function Abastecimento() {
   async function excluir(r) {
     if (!confirm('Excluir este abastecimento?')) return
     await supabase.from('abastecimentos').delete().eq('id', r.id)
-    // Reverte estoque
     if (r.produto_id) {
       await supabase.rpc('decrementar_estoque', { p_produto_id: r.produto_id, p_quantidade: r.quantidade })
     }
     await carregar()
+    mostrar('Abastecimento excluído!', 'info')
   }
 
   const aguas = produtos.filter(p => p.categoria === 'agua')
   const gases = produtos.filter(p => p.categoria === 'gas')
 
-  const totalInvestido = registros.reduce((acc, r) => acc + r.total_compra, 0)
-  const totalLucroPrevisto = registros.reduce((acc, r) => acc + r.lucro_previsto, 0)
-  const totalVendaPrevista = registros.reduce((acc, r) => acc + r.total_venda_previsto, 0)
+  // Filtros do histórico
+  const registrosFiltrados = registros.filter(r => {
+    const data = new Date(r.created_at)
+    if (filtroData.de && data < new Date(filtroData.de)) return false
+    if (filtroData.ate && data > new Date(filtroData.ate + 'T23:59:59')) return false
+    if (filtroProduto && r.produto_id !== filtroProduto) return false
+    return true
+  })
+
+  const totalInvestido = registrosFiltrados.reduce((acc, r) => acc + r.total_compra, 0)
+  const totalLucroPrevisto = registrosFiltrados.reduce((acc, r) => acc + r.lucro_previsto, 0)
+  const totalVendaPrevista = registrosFiltrados.reduce((acc, r) => acc + r.total_venda_previsto, 0)
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-blue-800">🚚 Abastecimento</h2>
-        <p className="text-gray-500 text-sm mt-1">Registre a entrada de mercadorias e acompanhe o lucro previsto</p>
+      {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-blue-800">🚚 Abastecimento</h2>
+          <p className="text-gray-500 text-sm mt-1">Registre a entrada de mercadorias e acompanhe o lucro previsto</p>
+        </div>
+        <button onClick={() => exportarCSV(registrosFiltrados.map(r => ({
+          Data: new Date(r.created_at).toLocaleDateString('pt-BR'),
+          Produto: r.produtos?.nome || '',
+          Quantidade: r.quantidade,
+          'Preço Compra': r.preco_compra,
+          'Preço Venda': r.preco_venda,
+          'Custo Total': r.total_compra,
+          'Receita Prevista': r.total_venda_previsto,
+          'Lucro Previsto': r.lucro_previsto,
+          Observação: r.observacao || '',
+        })), 'abastecimentos')}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+          ⬇️ Exportar CSV
+        </button>
       </div>
 
-      {/* Stats */}
+      {/* Abas */}
+      <div className="flex gap-2">
+        {[{ key: 'novo', label: '+ Novo Abastecimento' }, { key: 'historico', label: '📋 Histórico' }].map(a => (
+          <button key={a.key} onClick={() => setAba(a.key)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition border-2 ${aba === a.key ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400'}`}>
+            {a.label}
+          </button>
+        ))}
+      </div>
+      </div>
+
+      {/* Stats — sempre visíveis */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="card text-center">
           <p className="text-2xl font-bold text-red-500">R$ {totalInvestido.toFixed(2)}</p>
@@ -139,11 +181,12 @@ export default function Abastecimento() {
           <p className={`text-2xl font-bold ${totalLucroPrevisto >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             R$ {totalLucroPrevisto.toFixed(2)}
           </p>
-          <p className="text-gray-500 text-xs mt-1">📈 Lucro Previsto Total</p>
+          <p className="text-gray-500 text-xs mt-1">📈 Lucro Previsto</p>
         </div>
       </div>
 
-      {/* Form */}
+      {/* Aba: Novo Abastecimento */}
+      {aba === 'novo' && (
       <div className="card">
         <h3 className="text-sm font-semibold text-gray-600 mb-4">
           {editando ? '✏️ Editando Abastecimento' : 'Registrar Abastecimento'}
@@ -256,6 +299,93 @@ export default function Abastecimento() {
           </tbody>
         </table>
       </div>
+      )} {/* fim aba novo */}
+
+      {/* Aba: Histórico */}
+      {aba === 'historico' && (
+        <div className="space-y-4">
+          {/* Filtros */}
+          <div className="card grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">De</label>
+              <input type="date" value={filtroData.de}
+                onChange={e => setFiltroData(f => ({ ...f, de: e.target.value }))} className="input" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Até</label>
+              <input type="date" value={filtroData.ate}
+                onChange={e => setFiltroData(f => ({ ...f, ate: e.target.value }))} className="input" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Produto</label>
+              <select value={filtroProduto} onChange={e => setFiltroProduto(e.target.value)} className="input">
+                <option value="">Todos os produtos</option>
+                {produtos.map(p => <option key={p.id} value={p.id}>{p.nome}{p.marca ? ` — ${p.marca}` : ''}</option>)}
+              </select>
+            </div>
+            {(filtroData.de || filtroData.ate || filtroProduto) && (
+              <button onClick={() => { setFiltroData({ de: '', ate: '' }); setFiltroProduto('') }}
+                className="sm:col-span-3 text-xs text-blue-600 hover:underline text-left">
+                ✕ Limpar filtros ({registrosFiltrados.length} resultado(s))
+              </button>
+            )}
+          </div>
+
+          {/* Tabela histórico */}
+          <div className="card p-0 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="table-header">
+                  <th className="p-4 text-left">Data</th>
+                  <th className="p-4 text-left">Produto</th>
+                  <th className="p-4 text-left">Qtd</th>
+                  <th className="p-4 text-left">Preço Compra</th>
+                  <th className="p-4 text-left">Preço Venda</th>
+                  <th className="p-4 text-left">Custo Total</th>
+                  <th className="p-4 text-left">Receita Prev.</th>
+                  <th className="p-4 text-left">Lucro Prev.</th>
+                  <th className="p-4 text-left">Obs.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {registrosFiltrados.map(r => {
+                  const margem = r.total_compra > 0 ? ((r.lucro_previsto / r.total_compra) * 100).toFixed(1) : 0
+                  return (
+                    <tr key={r.id} className="table-row">
+                      <td className="p-4 text-gray-400 whitespace-nowrap">{new Date(r.created_at).toLocaleDateString('pt-BR')}</td>
+                      <td className="p-4 whitespace-nowrap font-medium">{r.produtos?.nome || '—'}</td>
+                      <td className="p-4 text-center font-bold text-blue-700">{r.quantidade}</td>
+                      <td className="p-4 whitespace-nowrap text-red-500">R$ {r.preco_compra.toFixed(2)}</td>
+                      <td className="p-4 whitespace-nowrap text-blue-600">R$ {r.preco_venda.toFixed(2)}</td>
+                      <td className="p-4 whitespace-nowrap font-semibold text-red-500">R$ {r.total_compra.toFixed(2)}</td>
+                      <td className="p-4 whitespace-nowrap font-semibold text-blue-700">R$ {r.total_venda_previsto.toFixed(2)}</td>
+                      <td className="p-4 whitespace-nowrap">
+                        <span className={`font-bold ${r.lucro_previsto >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          R$ {r.lucro_previsto.toFixed(2)}
+                        </span>
+                        <span className="text-xs text-gray-400 ml-1">({margem}%)</span>
+                      </td>
+                      <td className="p-4 text-gray-400 text-xs">{r.observacao || '—'}</td>
+                    </tr>
+                  )
+                })}
+                {registrosFiltrados.length === 0 && (
+                  <tr><td colSpan={9} className="p-8 text-center text-gray-400">Nenhum registro encontrado</td></tr>
+                )}
+                {registrosFiltrados.length > 0 && (
+                  <tr className="bg-blue-50 font-bold text-sm">
+                    <td colSpan={5} className="p-4 text-right text-blue-700">Totais:</td>
+                    <td className="p-4 text-red-500">R$ {totalInvestido.toFixed(2)}</td>
+                    <td className="p-4 text-blue-700">R$ {totalVendaPrevista.toFixed(2)}</td>
+                    <td className="p-4 text-emerald-600">R$ {totalLucroPrevisto.toFixed(2)}</td>
+                    <td></td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
