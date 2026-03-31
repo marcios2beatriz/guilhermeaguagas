@@ -33,6 +33,8 @@ export default function Vendas() {
   const [clientes, setClientes] = useState([])
   const [produtos, setProdutos] = useState([])
   const [form, setForm] = useState(FORM_VAZIO)
+  const [aba, setAba] = useState('nova')
+  const [filtro, setFiltro] = useState({ de: '', ate: '', cliente_id: '', forma_pagamento: '' })
   const [itens, setItens] = useState([{ ...ITEM_VAZIO }]) // carrinho de itens
   const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -229,6 +231,19 @@ export default function Vendas() {
   const aguas = produtos.filter(p => p.categoria === 'agua')
   const gases = produtos.filter(p => p.categoria === 'gas')
 
+  // Filtro do histórico
+  const vendasFiltradas = vendas.filter(v => {
+    const data = new Date(v.created_at)
+    if (filtro.de && data < new Date(filtro.de)) return false
+    if (filtro.ate && data > new Date(filtro.ate + 'T23:59:59')) return false
+    if (filtro.cliente_id && v.cliente_id !== filtro.cliente_id) return false
+    if (filtro.forma_pagamento === 'fiado' && !v.fiado) return false
+    if (filtro.forma_pagamento && filtro.forma_pagamento !== 'fiado' && v.forma_pagamento !== filtro.forma_pagamento) return false
+    return true
+  })
+
+  const totalFiltrado = vendasFiltradas.reduce((acc, v) => acc + v.total, 0)
+
   return (
     <div className="space-y-6">
       {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
@@ -237,7 +252,7 @@ export default function Vendas() {
           <h2 className="text-2xl font-bold text-blue-800">🛒 Vendas</h2>
           <p className="text-gray-500 text-sm mt-1">Registre as vendas do dia</p>
         </div>
-        <button onClick={() => exportarCSV(vendas.map(v => ({
+        <button onClick={() => exportarCSV(vendasFiltradas.map(v => ({
           Data: new Date(v.created_at).toLocaleDateString('pt-BR'),
           Cliente: v.clientes?.nome || '',
           Produto: v.produtos?.nome || '',
@@ -263,7 +278,18 @@ export default function Vendas() {
         </div>
       </div>
 
-      {/* Form */}
+      {/* Abas */}
+      <div className="flex gap-2">
+        {[{ key: 'nova', label: '+ Nova Venda' }, { key: 'historico', label: '📋 Histórico' }].map(a => (
+          <button key={a.key} onClick={() => setAba(a.key)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition border-2 ${aba === a.key ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-blue-700 border-blue-200 hover:border-blue-400'}`}>
+            {a.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Aba: Nova Venda */}
+      {aba === 'nova' && (
       <div className="card">
         <h3 className="text-sm font-semibold text-gray-600 mb-4">
           {editando ? '✏️ Editando Venda' : 'Nova Venda'}
@@ -390,8 +416,118 @@ export default function Vendas() {
           )}
         </form>
       </div>
+      )} {/* fim aba nova */}
 
-      {/* Table */}
+      {/* Aba: Histórico */}
+      {aba === 'historico' && (
+        <div className="space-y-4">
+          {/* Filtros */}
+          <div className="card grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">De</label>
+              <input type="date" value={filtro.de} onChange={e => setFiltro(f => ({ ...f, de: e.target.value }))} className="input" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Até</label>
+              <input type="date" value={filtro.ate} onChange={e => setFiltro(f => ({ ...f, ate: e.target.value }))} className="input" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Cliente</label>
+              <select value={filtro.cliente_id} onChange={e => setFiltro(f => ({ ...f, cliente_id: e.target.value }))} className="input">
+                <option value="">Todos</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Pagamento</label>
+              <select value={filtro.forma_pagamento} onChange={e => setFiltro(f => ({ ...f, forma_pagamento: e.target.value }))} className="input">
+                <option value="">Todos</option>
+                <option value="dinheiro">💵 Dinheiro</option>
+                <option value="pix">📱 Pix</option>
+                <option value="cartao">💳 Cartão</option>
+                <option value="fiado">📋 Fiado</option>
+              </select>
+            </div>
+            {(filtro.de || filtro.ate || filtro.cliente_id || filtro.forma_pagamento) && (
+              <div className="col-span-2 sm:col-span-4 flex items-center justify-between">
+                <button onClick={() => setFiltro({ de: '', ate: '', cliente_id: '', forma_pagamento: '' })}
+                  className="text-xs text-blue-600 hover:underline">
+                  ✕ Limpar filtros — {vendasFiltradas.length} resultado(s)
+                </button>
+                <span className="text-sm font-bold text-emerald-600">Total: R$ {totalFiltrado.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Tabela */}
+          <div className="card p-0 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="table-header">
+                  <th className="p-4 text-left">Data</th>
+                  <th className="p-4 text-left">Cliente</th>
+                  <th className="p-4 text-left">Produto</th>
+                  <th className="p-4 text-left">Qtd</th>
+                  <th className="p-4 text-left">Total</th>
+                  <th className="p-4 text-left">Desconto</th>
+                  <th className="p-4 text-left">Pgto</th>
+                  <th className="p-4 text-left">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vendasFiltradas.map(v => (
+                  <tr key={v.id} className={`table-row ${editando?.id === v.id ? 'bg-blue-50' : ''}`}>
+                    <td className="p-4 text-gray-400 whitespace-nowrap">{new Date(v.created_at).toLocaleDateString('pt-BR')}</td>
+                    <td className="p-4 whitespace-nowrap">{v.clientes?.nome || '—'}</td>
+                    <td className="p-4 whitespace-nowrap">{v.produtos?.nome || '—'}</td>
+                    <td className="p-4 text-gray-500">{v.quantidade}</td>
+                    <td className="p-4 font-semibold text-emerald-600 whitespace-nowrap">R$ {v.total?.toFixed(2)}</td>
+                    <td className="p-4 whitespace-nowrap">
+                      {v.desconto_valor > 0
+                        ? <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700 font-semibold">
+                            {v.desconto_tipo === 'percentual' ? `${v.desconto_valor}%` : `R$ ${v.desconto_valor.toFixed(2)}`}
+                          </span>
+                        : <span className="text-gray-300 text-xs">—</span>}
+                    </td>
+                    <td className="p-4">
+                      {v.fiado
+                        ? <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-600 font-semibold whitespace-nowrap">📋 Fiado</span>
+                        : v.forma_pagamento === 'pix'
+                        ? <span className="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-700 font-semibold whitespace-nowrap">📱 Pix</span>
+                        : v.forma_pagamento === 'cartao'
+                        ? <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700 font-semibold whitespace-nowrap">💳 Cartão</span>
+                        : <span className="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-700 font-semibold whitespace-nowrap">💵 Dinheiro</span>}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => enviarWhatsApp(v)}
+                          className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded-lg transition whitespace-nowrap">
+                          📲
+                        </button>
+                        <button onClick={() => { iniciarEdicao(v); setAba('nova') }} className="text-blue-500 hover:text-blue-700 text-xs font-semibold transition whitespace-nowrap">✏️</button>
+                        <button onClick={() => excluir(v)} className="btn-danger whitespace-nowrap">🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {vendasFiltradas.length === 0 && (
+                  <tr><td colSpan={8} className="p-8 text-center text-gray-400">Nenhuma venda encontrada</td></tr>
+                )}
+                {vendasFiltradas.length > 0 && (
+                  <tr className="bg-blue-50 font-bold text-sm">
+                    <td colSpan={4} className="p-4 text-right text-blue-700">Total:</td>
+                    <td className="p-4 text-emerald-600">R$ {totalFiltrado.toFixed(2)}</td>
+                    <td colSpan={3}></td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
       <div className="card p-0 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -453,4 +589,3 @@ export default function Vendas() {
     </div>
   )
 }
-
