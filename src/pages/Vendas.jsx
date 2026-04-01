@@ -36,6 +36,7 @@ export default function Vendas() {
   const hoje = new Date().toISOString().split('T')[0]
   const [aba, setAba] = useState('nova')
   const [filtro, setFiltro] = useState({ de: hoje, ate: hoje, cliente_id: '', forma_pagamento: '' })
+  const [vendaDetalhe, setVendaDetalhe] = useState(null)
   const [itens, setItens] = useState([{ ...ITEM_VAZIO }]) // carrinho de itens
   const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -248,6 +249,65 @@ export default function Vendas() {
   return (
     <div className="space-y-6">
       {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
+
+      {/* Modal detalhe da venda */}
+      {vendaDetalhe && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setVendaDetalhe(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-blue-800">Detalhes da Venda</h3>
+              <button onClick={() => setVendaDetalhe(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 bg-blue-50 rounded-2xl p-4 text-sm">
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Data</p><p className="font-semibold">{new Date(vendaDetalhe.created_at).toLocaleDateString('pt-BR')} {new Date(vendaDetalhe.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p></div>
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Cliente</p><p className="font-semibold">{vendaDetalhe.clientes?.nome || '—'}</p></div>
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Telefone</p><p className="font-semibold">{vendaDetalhe.clientes?.telefone || '—'}</p></div>
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Bairro</p><p className="font-semibold">{vendaDetalhe.clientes?.bairro || '—'}</p></div>
+              <div className="col-span-2"><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Endereço</p>
+                <p className="font-semibold">{[vendaDetalhe.clientes?.endereco, vendaDetalhe.clientes?.numero, vendaDetalhe.clientes?.complemento].filter(Boolean).join(', ') || '—'}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Produto</p><p className="font-semibold">{vendaDetalhe.produtos?.nome || '—'}</p></div>
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Quantidade</p><p className="font-semibold">{vendaDetalhe.quantidade}</p></div>
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Valor Unit.</p><p className="font-semibold">R$ {vendaDetalhe.valor_unit?.toFixed(2)}</p></div>
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Desconto</p>
+                <p className="font-semibold">
+                  {vendaDetalhe.desconto_valor > 0
+                    ? (vendaDetalhe.desconto_tipo === 'percentual' ? `${vendaDetalhe.desconto_valor}%` : `R$ ${vendaDetalhe.desconto_valor.toFixed(2)}`)
+                    : '—'}
+                </p>
+              </div>
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Total</p><p className="text-xl font-bold text-emerald-600">R$ {vendaDetalhe.total?.toFixed(2)}</p></div>
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Pagamento</p>
+                <p className="font-semibold">
+                  {vendaDetalhe.fiado ? '📋 Fiado'
+                    : vendaDetalhe.forma_pagamento === 'pix' ? '📱 Pix'
+                    : vendaDetalhe.forma_pagamento === 'cartao' ? '💳 Cartão'
+                    : '💵 Dinheiro'}
+                  {vendaDetalhe.pago_na_entrega ? ' • Na entrega' : ''}
+                </p>
+              </div>
+              {vendaDetalhe.troco_para > 0 && (
+                <div className="col-span-2"><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Troco para</p><p className="font-semibold">R$ {vendaDetalhe.troco_para.toFixed(2)}</p></div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => { enviarWhatsApp(vendaDetalhe); setVendaDetalhe(null) }}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 rounded-2xl transition text-sm">
+                📲 WhatsApp
+              </button>
+              <button onClick={() => setVendaDetalhe(null)}
+                className="flex-1 border border-gray-200 text-gray-600 hover:bg-gray-50 font-semibold py-2.5 rounded-2xl transition text-sm">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold text-blue-800">🛒 Vendas</h2>
@@ -501,6 +561,8 @@ export default function Vendas() {
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => setVendaDetalhe(v)}
+                          className="text-gray-400 hover:text-blue-600 text-base transition" title="Ver detalhes">👁️</button>
                         <button onClick={() => enviarWhatsApp(v)}
                           className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded-lg transition whitespace-nowrap">
                           📲
