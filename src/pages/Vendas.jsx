@@ -44,7 +44,7 @@ export default function Vendas() {
   async function carregar() {
     const [{ data: v }, { data: c }, { data: p }] = await Promise.all([
       supabase.from('vendas').select('*, clientes(nome, telefone, endereco, numero, bairro, complemento), produtos(nome, categoria)').order('created_at', { ascending: false }).limit(100),
-      supabase.from('clientes').select('id, nome').order('nome'),
+      supabase.from('clientes').select('id, nome, telefone, bairro, saldo_fiado, endereco, numero, complemento').order('nome'),
       supabase.from('produtos').select('*').eq('ativo', true).order('categoria').order('nome'),
     ])
     setVendas(v || [])

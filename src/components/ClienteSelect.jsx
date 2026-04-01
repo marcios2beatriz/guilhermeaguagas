@@ -14,15 +14,16 @@ export default function ClienteSelect({ clientes, value, onChange, required }) {
     return () => document.removeEventListener('mousedown', fechar)
   }, [])
 
-  const filtrados = clientes.filter(c => {
+    const filtrados = clientes.filter(c => {
     if (!busca) return true
-    const q = busca.toLowerCase()
+    const q = busca.toLowerCase().trim()
     const telLimpo = (c.telefone || '').replace(/\D/g, '')
     const buscaLimpa = busca.replace(/\D/g, '')
-    return (
-      c.nome.toLowerCase().includes(q) ||
-      (buscaLimpa.length >= 2 && telLimpo.includes(buscaLimpa))
-    )
+    // busca por nome
+    if (c.nome.toLowerCase().includes(q)) return true
+    // busca por telefone — qualquer parte dos dígitos
+    if (buscaLimpa.length >= 2 && telLimpo.includes(buscaLimpa)) return true
+    return false
   })
 
   function selecionar(c) {
