@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import Toast from '../components/Toast'
 import { useToast } from '../hooks/useToast'
 import { exportarCSV } from '../lib/exportCsv'
+import TelefoneInput from '../components/TelefoneInput'
 
 const formVazio = { nome: '', telefone: '', endereco: '', numero: '', complemento: '', bairro: '', referencia: '' }
 
@@ -114,7 +115,12 @@ export default function Clientes() {
         </h3>
         <form onSubmit={salvar} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {f('nome', 'Nome completo', true, 'sm:col-span-2')}
-          {f('telefone', 'Telefone', true)}
+          <TelefoneInput
+            value={form.telefone}
+            onChange={v => setForm({ ...form, telefone: v })}
+            className="input"
+            placeholder="Telefone *"
+          />
           {f('endereco', 'Rua / Endereço', true, 'sm:col-span-2')}
           {f('numero', 'Número', true)}
           {f('complemento', 'Complemento', false)}
