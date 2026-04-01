@@ -13,10 +13,15 @@ export default function ClienteSelect({ clientes, value, onChange, required }) {
     return () => document.removeEventListener('mousedown', fechar)
   }, [])
 
-  const filtrados = clientes.filter(c =>
-    c.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    (c.telefone || '').includes(busca)
-  ).slice(0, 8)
+  const filtrados = clientes.filter(c => {
+    const q = busca.toLowerCase()
+    const telLimpo = (c.telefone || '').replace(/\D/g, '')
+    const buscaLimpa = busca.replace(/\D/g, '')
+    return (
+      c.nome.toLowerCase().includes(q) ||
+      (buscaLimpa.length > 0 && telLimpo.includes(buscaLimpa))
+    )
+  }).slice(0, 8)
 
   function selecionar(c) {
     onChange(c.id)
