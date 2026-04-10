@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase'
 import Toast from '../components/Toast'
 import { useToast } from '../hooks/useToast'
@@ -79,9 +80,9 @@ export default function Clientes() {
     <div className="space-y-6">
       {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
 
-      {/* Modal detalhes do cliente */}
-      {clienteModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setClienteModal(null)}>
+      {/* Modal via portal — renderiza direto no body */}
+      {clienteModal && createPortal(
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4" onClick={() => setClienteModal(null)}>
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div>
@@ -92,28 +93,17 @@ export default function Clientes() {
               </div>
               <button onClick={() => setClienteModal(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
             </div>
-
             <div className="grid grid-cols-2 gap-3 bg-blue-50 rounded-2xl p-4 text-sm">
-              <div>
-                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Telefone</p>
-                <p className="font-semibold">{clienteModal.telefone || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Bairro</p>
-                <p className="font-semibold">{clienteModal.bairro || '—'}</p>
-              </div>
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Telefone</p><p className="font-semibold">{clienteModal.telefone || '—'}</p></div>
+              <div><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Bairro</p><p className="font-semibold">{clienteModal.bairro || '—'}</p></div>
               <div className="col-span-2">
                 <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Endereço</p>
                 <p className="font-semibold">{[clienteModal.endereco, clienteModal.numero, clienteModal.complemento].filter(Boolean).join(', ') || '—'}</p>
               </div>
               {clienteModal.referencia && (
-                <div className="col-span-2">
-                  <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Referência</p>
-                  <p className="font-semibold">{clienteModal.referencia}</p>
-                </div>
+                <div className="col-span-2"><p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Referência</p><p className="font-semibold">{clienteModal.referencia}</p></div>
               )}
             </div>
-
             <div className="flex gap-3">
               {clienteModal.telefone && (
                 <button onClick={() => {
@@ -134,7 +124,8 @@ export default function Clientes() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
