@@ -12,6 +12,7 @@ export default function Clientes() {
   const [form, setForm] = useState(formVazio)
   const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [clienteModal, setClienteModal] = useState(null)
   const { toast, mostrar, fechar } = useToast()
 
   async function carregar() {
@@ -77,6 +78,64 @@ export default function Clientes() {
   return (
     <div className="space-y-6">
       {toast && <Toast mensagem={toast.mensagem} tipo={toast.tipo} onClose={fechar} />}
+
+      {/* Modal detalhes do cliente */}
+      {clienteModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setClienteModal(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-blue-800">{clienteModal.nome}</h3>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${clienteModal.saldo_fiado > 0 ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'}`}>
+                  {clienteModal.saldo_fiado > 0 ? `Fiado: R$ ${clienteModal.saldo_fiado.toFixed(2)}` : '✅ Em dia'}
+                </span>
+              </div>
+              <button onClick={() => setClienteModal(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 bg-blue-50 rounded-2xl p-4 text-sm">
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Telefone</p>
+                <p className="font-semibold">{clienteModal.telefone || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Bairro</p>
+                <p className="font-semibold">{clienteModal.bairro || '—'}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Endereço</p>
+                <p className="font-semibold">{[clienteModal.endereco, clienteModal.numero, clienteModal.complemento].filter(Boolean).join(', ') || '—'}</p>
+              </div>
+              {clienteModal.referencia && (
+                <div className="col-span-2">
+                  <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Referência</p>
+                  <p className="font-semibold">{clienteModal.referencia}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              {clienteModal.telefone && (
+                <button onClick={() => {
+                  const tel = clienteModal.telefone.replace(/\D/g, '')
+                  const msg = `Olá ${clienteModal.nome}! Tudo bem? 😊\n\nPassando para saber se você precisa de água ou gás!\n\n_Guilherme Água e Gás — (83) 98666-6562_`
+                  window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank')
+                }} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 rounded-2xl transition text-sm">
+                  📲 WhatsApp
+                </button>
+              )}
+              <button onClick={() => { iniciarEdicao(clienteModal); setClienteModal(null) }}
+                className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 rounded-2xl transition text-sm">
+                ✏️ Editar
+              </button>
+              <button onClick={() => setClienteModal(null)}
+                className="flex-1 border border-gray-200 text-gray-600 hover:bg-gray-50 font-semibold py-2.5 rounded-2xl transition text-sm">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold text-blue-800">👥 Clientes</h2>
@@ -158,7 +217,11 @@ export default function Clientes() {
           <tbody>
             {clientes.map(c => (
               <tr key={c.id} className={`table-row ${editando === c.id ? 'bg-blue-50' : ''}`}>
-                <td className="p-4 font-medium">{c.nome}</td>
+                <td className="p-4 font-medium">
+                  <button onClick={() => setClienteModal(c)} className="text-blue-700 hover:underline font-semibold text-left">
+                    {c.nome}
+                  </button>
+                </td>
                 <td className="p-4 text-gray-500">{c.telefone || '—'}</td>
                 <td className="p-4 text-gray-500">
                   {[c.endereco, c.numero, c.complemento].filter(Boolean).join(', ') || '—'}
