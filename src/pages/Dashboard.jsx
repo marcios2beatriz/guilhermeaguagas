@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { SkeletonCard } from '../components/Skeleton'
 
 function Card({ title, value, sub, color = 'text-blue-700', bg = 'bg-white' }) {
   return (
@@ -57,7 +58,20 @@ export default function Dashboard() {
   const estoqueAguaTotal = aguas.reduce((acc, p) => acc + (p.estoque || 0), 0)
   const estoqueGasTotal = gases.reduce((acc, p) => acc + (p.estoque || 0), 0)
 
-  if (loading) return <div className="text-center text-gray-400 py-20">Carregando...</div>
+  if (loading) return (
+    <div className="space-y-8 page-enter">
+      <div className="flex items-center justify-between">
+        <div className="skeleton h-8 w-48" />
+        <div className="flex gap-2"><div className="skeleton h-10 w-32" /><div className="skeleton h-10 w-32" /></div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        {[...Array(2)].map((_, i) => <SkeletonCard key={i} />)}
+      </div>
+    </div>
+  )
 
   const alertasEstoque = produtos.filter(p =>
     (p.categoria === 'agua' && p.estoque <= 5) || (p.categoria === 'gas' && p.estoque <= 3)
@@ -86,10 +100,13 @@ export default function Dashboard() {
       {/* Alertas de estoque baixo */}
       {alertasEstoque.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 space-y-2">
-          <p className="text-red-700 font-bold text-sm">⚠️ Estoque baixo — reposição necessária</p>
+          <p className="text-red-700 font-bold text-sm flex items-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 pulse-alert"></span>
+            ⚠️ Estoque baixo — reposição necessária
+          </p>
           <div className="flex flex-wrap gap-2">
             {alertasEstoque.map(p => (
-              <span key={p.id} className="bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full">
+              <span key={p.id} className="bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full pulse-alert">
                 {p.nome}{p.marca ? ` (${p.marca})` : ''} — {p.estoque} un.
               </span>
             ))}
@@ -189,4 +206,5 @@ export default function Dashboard() {
     </div>
   )
 }
+
 

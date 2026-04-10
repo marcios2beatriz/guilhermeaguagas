@@ -6,30 +6,40 @@
   body {
     @apply bg-blue-50 text-gray-800;
   }
+
+  /* Scrollbar customizada */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-blue-50; }
+  ::-webkit-scrollbar-thumb { @apply bg-blue-300 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-blue-500; }
 }
 
 @layer components {
   .card {
-    @apply bg-white border border-blue-100 rounded-2xl p-4 shadow-md;
+    @apply bg-white border border-blue-100 rounded-2xl p-4 shadow-md
+           transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
   }
 
   .input {
     @apply bg-white border border-blue-200 text-gray-800 placeholder-gray-400 rounded-xl px-4 py-2.5 text-sm w-full
-           focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition;
+           focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200;
   }
 
   .btn-primary {
     @apply bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-5 rounded-xl w-full
-           transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 text-sm;
+           transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 text-sm
+           relative overflow-hidden;
   }
 
   .btn-success {
     @apply bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl w-full
-           transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 text-sm;
+           transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 text-sm
+           relative overflow-hidden;
   }
 
   .btn-danger {
-    @apply text-red-500 hover:text-red-700 text-xs transition;
+    @apply text-red-400 hover:text-red-600 text-xs transition-all duration-150
+           hover:scale-110;
   }
 
   .table-header {
@@ -37,17 +47,63 @@
   }
 
   .table-row {
-    @apply border-t border-blue-50 hover:bg-blue-50 transition;
+    @apply border-t border-blue-50 transition-all duration-150
+           hover:bg-blue-50 hover:shadow-sm;
   }
 
-  /* Tabelas responsivas no mobile */
-  .table-responsive {
-    @apply w-full overflow-x-auto -mx-0;
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 rounded-xl animate-pulse;
+    background-size: 200% 100%;
+  }
+
+  /* Badge com pulso */
+  .badge-alert {
+    @apply animate-pulse;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    @apply relative;
+  }
+  .tooltip:hover::after {
+    content: attr(data-tip);
+    @apply absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded-lg whitespace-nowrap z-50 pointer-events-none;
   }
 }
 
+/* Animação de entrada de página */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: fadeSlideIn 0.25s ease-out;
+}
+
+/* Slide up toast */
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-slide-up { animation: slide-up 0.25s ease-out; }
+
+/* Ripple effect */
+@keyframes ripple {
+  to { transform: scale(4); opacity: 0; }
+}
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  transform: scale(0);
+  animation: ripple 0.5s linear;
+  pointer-events: none;
+}
+
+/* Pulso badge estoque */
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+}
+.pulse-alert { animation: pulse-red 2s infinite; }
