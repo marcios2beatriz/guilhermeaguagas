@@ -15,13 +15,13 @@ import Abastecimento from './pages/Abastecimento'
 const menu = [
   { to: '/', label: 'Dashboard', icon: '📊', end: true },
   { to: '/clientes', label: 'Clientes', icon: '👥' },
-  { to: '/crm', label: 'CRM', icon: '📈' },
-  { to: '/historico', label: 'Histórico', icon: '📜' },
-  { to: '/produtos', label: 'Mercadorias', icon: '📦' },
-  { to: '/abastecimento', label: 'Abastecimento', icon: '🚚' },
   { to: '/vendas', label: 'Vendas', icon: '🛒' },
-  { to: '/fiado', label: 'Fiado', icon: '📋' },
+  { to: '/produtos', label: 'Mercadorias', icon: '📦' },
   { to: '/fluxo', label: 'Caixa', icon: '💰' },
+  { to: '/fiado', label: 'Fiado', icon: '📋' },
+  { to: '/historico', label: 'Histórico', icon: '📜' },
+  { to: '/crm', label: 'CRM', icon: '📈' },
+  { to: '/abastecimento', label: 'Abastecimento', icon: '🚚' },
 ]
 
 export default function App() {
