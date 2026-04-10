@@ -101,6 +101,19 @@
   pointer-events: none;
 }
 
+/* Shimmer no texto */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.text-shimmer {
+  background: linear-gradient(90deg, #1e40af 25%, #38bdf8 50%, #1e40af 75%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
 /* Pulso badge estoque */
 @keyframes pulse-red {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }

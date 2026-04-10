@@ -72,8 +72,9 @@ export default function App() {
             <img src="/galao.png" alt="Galão" className="w-8 h-8 object-contain bg-white rounded-full flex-shrink-0" />
             {!collapsed && (
               <div className="flex-1 text-center">
-                <p className="font-bold text-sm leading-tight text-white">Guilherme</p>
-                <p className="text-xs text-blue-200">Água e Gás</p>
+                <p className="font-black text-base leading-tight text-white tracking-wide">Guilherme</p>
+                <p className="text-xs font-bold bg-gradient-to-r from-cyan-300 to-blue-200 bg-clip-text text-transparent tracking-widest uppercase">Água e Gás</p>
+                <p className="text-[9px] text-blue-300 mt-0.5 tracking-wider">Sistema de Gestão</p>
               </div>
             )}
             {!collapsed && <img src="/botijao.png" alt="Botijão" className="w-8 h-8 object-contain bg-white rounded-full flex-shrink-0" />}
@@ -109,12 +110,15 @@ export default function App() {
         {/* Main */}
         <div className="flex-1 flex flex-col min-w-0">
           <header className="bg-white border-b border-blue-100 px-4 py-3 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-2">
-              <img src="/galao.png" alt="Galão" className="w-8 h-8 object-contain bg-white rounded-full" />
-              <h1 className="text-base font-bold text-blue-800">
-                Guilherme <span className="text-blue-500">Água e Gás</span>
-              </h1>
-              <img src="/botijao.png" alt="Botijão" className="w-8 h-8 object-contain bg-white rounded-full" />
+            <div className="flex items-center gap-3">
+              <img src="/galao.png" alt="Galão" className="w-9 h-9 object-contain bg-white rounded-full drop-shadow" />
+              <div className="border-l-2 border-blue-100 pl-3">
+                <h1 className="text-base font-black text-blue-900 leading-tight tracking-wide">
+                  Guilherme <span className="text-shimmer">Água e Gás</span>
+                </h1>
+                <p className="text-[10px] text-gray-400 tracking-widest uppercase font-semibold">Sistema de Gestão</p>
+              </div>
+              <img src="/botijao.png" alt="Botijão" className="w-9 h-9 object-contain bg-white rounded-full drop-shadow" />
             </div>
             <button onClick={sair}
               className="flex items-center gap-1.5 text-xs bg-red-50 text-red-500 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl transition-all duration-200 font-semibold hover:scale-105 active:scale-95">
