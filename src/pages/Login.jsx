@@ -29,8 +29,8 @@ export default function Login() {
         <div className="relative z-10 flex items-center gap-3">
           <img src="/galao.png" alt="Galão" className="w-12 h-12 object-contain bg-white rounded-full p-1 flex-shrink-0" />
           <div className="text-center flex-1">
-            <p className="text-white text-2xl font-bold leading-tight">Guilherme</p>
-            <p className="text-blue-200 text-lg font-semibold">Água e Gás</p>
+            <p className="text-white text-2xl font-black leading-tight tracking-wide">Guilherme</p>
+            <p className="text-shimmer-white text-lg font-bold tracking-widest uppercase">Água e Gás</p>
           </div>
           <img src="/botijao.png" alt="Botijão" className="w-12 h-12 object-contain bg-white rounded-full p-1 flex-shrink-0" />
         </div>
