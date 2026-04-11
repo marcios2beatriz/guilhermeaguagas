@@ -72,8 +72,8 @@ export default function Login() {
             <div className="flex items-center justify-center gap-3">
               <img src="/galao.png" alt="Galão" className="w-12 h-12 object-contain bg-white rounded-full p-1" />
               <div>
-                <h1 className="text-xl font-bold text-blue-800">Guilherme</h1>
-                <p className="text-blue-500 font-semibold text-sm">Água e Gás</p>
+                <h1 className="text-xl font-black text-blue-800 tracking-wide">Guilherme</h1>
+                <p className="text-shimmer text-sm font-bold tracking-widest uppercase">Água e Gás</p>
               </div>
               <img src="/botijao.png" alt="Botijão" className="w-12 h-12 object-contain bg-white rounded-full p-1" />
             </div>
