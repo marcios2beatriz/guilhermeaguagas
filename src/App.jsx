@@ -59,30 +59,7 @@ export default function App() {
 
   if (!sessao) return <Login />
 
-  const emailBloqueado = 'gsguilherme120@hotmail.com'
-  const usuarioBloqueado = sessao.user?.email?.toLowerCase() === emailBloqueado
-
-  if (usuarioBloqueado) return (
-    <div className="min-h-screen bg-blue-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center space-y-5">
-        <div className="text-5xl">🔒</div>
-        <h2 className="text-xl font-black text-gray-800">Acesso Restrito</h2>
-        <p className="text-gray-500 text-sm leading-relaxed">
-          Seu acesso ao sistema está temporariamente suspenso.<br />
-          Para continuar utilizando, entre em contato com o administrador.
-        </p>
-        <div className="bg-blue-50 rounded-2xl p-4 text-sm">
-          <p className="text-gray-400 text-xs uppercase font-semibold mb-1">Contato</p>
-          <p className="font-bold text-blue-800">Marcio</p>
-          <p className="text-blue-600">📞 (83) 98862-3431</p>
-        </div>
-        <button onClick={sair}
-          className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-2xl transition-all active:scale-95">
-          Sair do sistema
-        </button>
-      </div>
-    </div>
-  )
+  // const emailBloqueado = 'gsguilherme120@hotmail.com'
 
   async function sair() { await supabase.auth.signOut() }
 
