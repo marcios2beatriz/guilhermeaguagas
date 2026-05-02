@@ -73,8 +73,8 @@ export default function App() {
         </p>
         <div className="bg-blue-50 rounded-2xl p-4 text-sm">
           <p className="text-gray-400 text-xs uppercase font-semibold mb-1">Contato</p>
-          <p className="font-bold text-blue-800">Guilherme Água e Gás</p>
-          <p className="text-blue-600">📞 (83) 98666-6562</p>
+          <p className="font-bold text-blue-800">Marcio</p>
+          <p className="text-blue-600">📞 (83) 98862-3431</p>
         </div>
         <button onClick={sair}
           className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-2xl transition-all active:scale-95">
